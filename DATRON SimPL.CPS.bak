@@ -52,7 +52,7 @@ properties = {
 	writeMachine : true, // write machine
 	optionalStop : true, // optional stop
 	useParametricFeed : true, // specifies that feed should be output using Q values
-	useDatronFeedCommand : true, // specifies that feed should be output using Q values
+	useDatronFeedCommand : false, // specifies that feed should be output using Q values
 	showNotes : false, // specifies that operation notes should be output
 	useSmoothing : true, // specifies if smoothing should be used or not
 	useDynamic : true, // specifies using dynamic mode or not
@@ -1161,21 +1161,16 @@ function onSection() {
 		if (tool.spindleRPM < 6000) {
 			tool.spindleRPM = 6000;
 		}
-		//Old way without the new command
-		//onSpindleSpeed(tool.spindleRPM);
+		onSpindleSpeed(tool.spindleRPM);
     
 		// set coolant after we have positioned at Z
 		setCoolant(tool.coolant);
 		
 		//make the tool changer command
 		if(properties.writeToolTable){
-			writeBlock('Tool name="' + createToolName(tool) + '"' + 
-				' newRpm=' +  rpmFormat.format(tool.spindleRPM) + 
-				' skipRestoring');
+			writeBlock('Tool name="' + createToolName(tool) + '"' + ' skipRestoring');
 		} else {
-			writeBlock('Tool = ' + toolOutput.format(tool.number) + 
-				' newRpm=' +  rpmFormat.format(tool.spindleRPM) + 
-				' skipRestoring');
+			writeBlock("Tool = " + toolOutput.format(tool.number) + " skipRestoring");
 		}		
 
 		//set the current feed
