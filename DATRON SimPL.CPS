@@ -17,7 +17,7 @@ FORKID {04622D27-72F0-45d4-85FB-DB346FD1AE22}
 //TODO anpassung an den Paramtern der Cycles Bohren Gewinde usw. diese sollten am besten im Ooperationsaufruf stehen
 
 //das Helical Bohren kann unterstüzt werden indem mit expand der Durchmesser extrahiert wird (eine Statistik)
-//hier kann man dann den Durchmesser der Kreisbefehle anschuan
+//hier kann man dann den Durchmesser der Kreisbefehle anschauen
 //einfahren und ausfahren auf den kleineren der beiden werte beschränken.
 
 //Tool compenasation offscreenBuffering
@@ -523,8 +523,7 @@ function writeProgramHeader() {
 	}
 
 	//dont ask why the control need it 
-	writeBlock("using Base, CommonEnumerations, XyzSensorUtilities");
-	writeBlock("import System");	
+	writeBlock("using Base");
 	writeBlock(" ");
 
 	// scan all operations for the parametric feed commands
