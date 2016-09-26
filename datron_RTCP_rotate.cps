@@ -1652,9 +1652,10 @@ function onClose() {
   writeComment("###############################################");
   onCommand(COMMAND_COOLANT_OFF);
   
-  if (!is3D()) {
-    writeBlock(translate("Submacro") + " Endmacro;");
-  }
+	//no need in rotate
+  // if (!is3D()) {
+    // writeBlock(translate("Submacro") + " Endmacro;");
+  // }
     
   writeBlock(translate("Submacro") + " Retractzmax;")  
   
