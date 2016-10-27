@@ -954,6 +954,18 @@ function onSection() {
 	var section = currentSection;
 	var tool = currentSection.getTool();
 
+	
+	writeComment("Operation Time: " + formatCycleTime(section.getCycleTime()));
+	var showToolZMin = true;
+	if (showToolZMin) {
+		if (is3D()) {
+			var zRange = section.getGlobalZRange();
+			var number = tool.number;
+			zRange.expandToRange(section.getGlobalZRange());
+			writeComment("ZMIN = " + xyzFormat.format(zRange.getMinimum()));
+		}
+	}
+	
 	//create sub program
 	writeBlock("program " + getOperationName(currentSection));
 	spacingDepth += 1;
@@ -976,9 +988,7 @@ function onSection() {
 	// var id = section.getPatternId(); 
 	// writeComment("PatternID: " + id );
 	// writeComment("Anzahl der Pattern: " + section.getNumberOfPatternsInstances);
-	
-	writeComment("Operation Time: " + formatCycleTime(section.getCycleTime()));
-		
+			
 	// var insertToolCall = forceToolAndRetract || isFirstSection() ||
 	// currentSection.getForceToolChange && currentSection.getForceToolChange() ||
 	// (tool.number != getPreviousSection().getTool().number);
@@ -1144,17 +1154,14 @@ function onSection() {
 			}
 		}
 	}
-
-	var showToolZMin = true;
-	if (showToolZMin) {
-		if (is3D()) {
-			var zRange = section.getGlobalZRange();
-			var number = tool.number;
-			zRange.expandToRange(section.getGlobalZRange());
-			writeComment("ZMIN = " + xyzFormat.format(zRange.getMinimum()));
-		}
-	}
-
+	
+	if(hasParameter("operation:clearanceHeight_value")){
+		//clearanceHeight_value
+		var clearance = getParameter("operation:clearanceHeight_value");
+		writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
+	} else	writeComment("Findenix");
+	
+	
 	if (!isProbeOperation()) {		
 		// set rpm
 		if (tool.spindleRPM < 6000) {
@@ -1176,7 +1183,8 @@ function onSection() {
 				' newRpm=' +  rpmFormat.format(tool.spindleRPM) + 
 				' skipRestoring');
 		}		
-
+		
+		
 		//set the current feed
 		//replace by the default feed command
 		if (properties.useParametricFeed) {		
@@ -1377,9 +1385,7 @@ function onSection() {
 	//move to initial Position ( this command move the Z Axis to safe high and repositioning in safe high after that drive Z to end position)
 	var initialPosition = getFramePosition(section.getInitialPosition());
 	var xyz = xOutput.format(initialPosition.x) + yOutput.format(initialPosition.y) + zOutput.format(initialPosition.z);
-
-	writeBlock("SafeRapid" + xyz);
-
+	writeBlock("PrePositioning" + xyz);
 }
 
 
