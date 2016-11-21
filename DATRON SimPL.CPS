@@ -661,7 +661,7 @@ function getFeed(f) {
 				if (properties.useDatronFeedCommand) {
 					return ("Feed " + feedContext.datronFeedName.capitalizeFirstLetter());
 				} else {
-					return ("Feed=" + formatVariable(feedContext.description));
+					return ("Feed=" + formatVariable(feedContext.description));					
 				}			
 			}
 		}				
@@ -670,7 +670,7 @@ function getFeed(f) {
   
 	if (feedFormat.areDifferent(currentFeedValue, f)) {
 		currentFeedValue = f;
-		return "Feed=" + feedOutput.format(f);
+		return "Feed=" + f;
 	}		
 }
 
@@ -1321,8 +1321,9 @@ function onSection() {
         
 				writeBlock("repeatPass = " + dimensionFormat.format(section.getParameter("repeatPass")));
 				sequenceParamter.push("repeatPass=repeatPass");
-				break;			
-		}		
+				break;					
+					
+		}			
 	}
 			
 	if (properties.useSequences) {
