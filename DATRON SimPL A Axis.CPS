@@ -138,13 +138,13 @@ var zOutput = createVariable({
 	}, xyzFormat);
 var aOutput = createVariable({
 		prefix : " A="
-	}, xyzFormat);
+	}, angleFormat);
 var bOutput = createVariable({
 		prefix : " B="
-	}, xyzFormat);
+	}, angleFormat);
 var cOutput = createVariable({
 		prefix : " C="
-	}, xyzFormat);
+	}, angleFormat);
 var iOutput = createVariable({
 		prefix : " dX=",
 		force : true
@@ -943,7 +943,6 @@ function forceWorkPlane() {
 
 function setWorkPlane(abc) {
 	forceWorkPlane(); // always need the new workPlane
-	writeComment("todo Versuch die Arbeitsebene zu stezen");
 	if (!machineConfiguration.isMultiAxisConfiguration()) {
 		writeComment("Machine is not multi Axis support");
 		return; // ignore
@@ -953,8 +952,7 @@ function setWorkPlane(abc) {
 			abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
 			abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
 			abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
-	
-			writeComment("todo No workplane change");
+				
 		return; // no change
 	}
 
