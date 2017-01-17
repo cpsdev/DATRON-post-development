@@ -4,9 +4,9 @@
 
   DATRON post processor configuration.
 
-  $Revision: 41269 60550fa7187b0ff5205f42debe12525156a21d53 $
-  $Date: 2017-01-06 16:17:48 $
-  
+  $Revision$
+  $Date$
+
   FORKID {21ADEFBF-939E-4D3F-A935-4E61F5958698}
 */
 
@@ -42,8 +42,8 @@ properties = {
   useSequences : true, // this use a sequence in the output format to perform on large files
   useExternalSequencesFiles : false, // this property create one external sequence files for each operation
   writeCoolantCommands : true, // disable the coolant commands in the file
-	useParametricFeed : true,
-	waitAfterOperation : false
+  useParametricFeed : true, // specifies that feed should be output using parameters
+  waitAfterOperation : false // optional stop
 };
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
@@ -179,7 +179,7 @@ function onOpen() {
   if (!machineConfiguration.isMachineCoordinate(2)) {
     cOutput.disable();
   }
-  
+
   // header
   writeProgramHeader();
 
@@ -428,16 +428,6 @@ function writeProgramHeader() {
     var numberOfSections = getNumberOfSections();
     for (var i = 0; i < numberOfSections; ++i) {
       var section = getSection(i);
-      // TAG: loeschen wenn nicht gebraucht pruefen ob bei der deklaration notwendig
-      // var sequenceParamter = new Array();
-      // if (properties.useParametricFeed) {
-      // activeFeeds = initializeActiveFeeds(section);
-      // for (var j = 0; j < activeFeeds.length; ++j) {
-      // var feedContext = activeFeeds[j];
-      // sequenceParamter.push(formatVariable(feedContext.description) + "=" + feedFormat.format(feedContext.feed));
-      // }
-      // }
-      // sequences.push(getSequenceName(section) + " " + sequenceParamter.join(" "));
       sequences.push(getSequenceName(section));
     }
 
@@ -450,9 +440,9 @@ function writeProgramHeader() {
 
   // dont ask why the control need it
   writeBlock("using Base");
-	if(properties.waitAfterOperation){
-		writeBlock("import System");
-	}
+  if (properties.waitAfterOperation) {
+    writeBlock("import System");
+  }
   writeBlock(" ");
 
   // scan all operations for the parametric feed commands
@@ -476,9 +466,9 @@ function writeProgramHeader() {
   // write all the variable declarations in the header of the program
   if (!useDatronFeedCommand) {
     writeComment("feed variables declaration");
-		if (feedDeclaration != 0) {
+    if (feedDeclaration != 0) {
       writeBlock(feedDeclaration.join(":number\r\n") + ":number\r\n");
-		}
+    }
   }
 
   writeToolVariables();
@@ -606,18 +596,14 @@ function getFeed(f) {
 }
 
 function initializeActiveFeeds(section) {
-	var activeFeeds = new Array();
-	
+  var activeFeeds = new Array();
   if (section.hasAnyCycle && section.hasAnyCycle()) {
-		return activeFeeds;
+    return activeFeeds;
   }
-	
   activeMovements = new Array();
   var movements = section.getMovements();
-  
   var id = 0;
 
-	
   if (section.hasParameter("operation:tool_feedCutting")) {
     if (movements & ((1 << MOVEMENT_CUTTING) | (1 << MOVEMENT_LINK_TRANSITION) | (1 << MOVEMENT_EXTENDED))) {
       var feedContext = new FeedContext(id, localize("Cutting"), "roughing", section.getParameter("operation:tool_feedCutting"));
@@ -633,7 +619,6 @@ function initializeActiveFeeds(section) {
       addFeedContext(feedContext, activeFeeds);
     }
     ++id;
-
     if (section.hasParameter("operation-strategy") && (section.getParameter("operation-strategy") == "drill")) {
       var feedContext = new FeedContext(id, localize("Cutting"), "roughing", section.getParameter("operation:tool_feedCutting"));
       addFeedContext(feedContext, activeFeeds);
@@ -641,7 +626,6 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-  
   if (section.hasParameter("operation:finishFeedrate")) {
     if (movements & (1 << MOVEMENT_FINISH_CUTTING)) {
       var feedContext = new FeedContext(id, localize("Finish"), "finishing", section.getParameter("operation:finishFeedrate"));
@@ -657,7 +641,6 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-  
   if (section.hasParameter("operation:tool_feedEntry")) {
     if (movements & (1 << MOVEMENT_LEAD_IN)) {
       var feedContext = new FeedContext(id, localize("Entry"), "approach", section.getParameter("operation:tool_feedEntry"));
@@ -666,7 +649,6 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-
   if (section.hasParameter("operation:tool_feedExit")) {
     if (movements & (1 << MOVEMENT_LEAD_OUT)) {
       var feedContext = new FeedContext(id, localize("Exit"), "approach", section.getParameter("operation:tool_feedExit"));
@@ -675,7 +657,6 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-
   if (section.hasParameter("operation:noEngagementFeedrate")) {
     if (movements & (1 << MOVEMENT_LINK_DIRECT)) {
       var feedContext = new FeedContext(id, localize("Direct"), "approach", section.getParameter("operation:noEngagementFeedrate"));
@@ -693,7 +674,6 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-  
   if (section.hasParameter("operation:reducedFeedrate")) {
     if (movements & (1 << MOVEMENT_REDUCED)) {
       var feedContext = new FeedContext(id, localize("Reduced"), "finishing", section.getParameter("operation:reducedFeedrate"));
@@ -702,7 +682,6 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-
   if (section.hasParameter("operation:tool_feedRamp")) {
     if (movements & ((1 << MOVEMENT_RAMP) | (1 << MOVEMENT_RAMP_HELIX) | (1 << MOVEMENT_RAMP_PROFILE) | (1 << MOVEMENT_RAMP_ZIG_ZAG))) {
       var feedContext = new FeedContext(id, localize("Ramping"), "ramp", section.getParameter("operation:tool_feedRamp"));
@@ -751,7 +730,6 @@ function initializeActiveFeeds(section) {
       }
       break;
     case "bore-milling":
-
       if (section.hasParameter("movement:plunge")) {
         var feedContext = new FeedContext(id, localize("Plunge"), "plunge", section.getParameter("movement:plunge"));
         addFeedContext(feedContext, activeFeeds);
@@ -797,7 +775,7 @@ function forceWorkPlane() {
 
 function setWorkPlane(abc) {
   forceWorkPlane(); // always need the new workPlane
-  
+
   if (!machineConfiguration.isMultiAxisConfiguration()) {
     return; // ignore
   }
@@ -808,7 +786,7 @@ function setWorkPlane(abc) {
       abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
     return; // no change
   }
-  
+
   // TAG: add multi axis code
   // gMotionModal.reset();
   if (!is3D()) {
@@ -824,7 +802,7 @@ function setWorkPlane(abc) {
     // abcFormat.format(abc.y) +", ",
     // abcFormat.format(abc.z) +";");
   }
-  
+
   currentWorkPlaneABC = abc;
 }
 
@@ -844,7 +822,7 @@ function getWorkPlaneMachineABC(workPlane) {
   } else {
     abc = machineConfiguration.getPreferredABC(abc);
   }
-  
+
   try {
     abc = machineConfiguration.remapABC(abc);
     currentMachineABC = abc;
@@ -855,12 +833,12 @@ function getWorkPlaneMachineABC(workPlane) {
       + conditional(machineConfiguration.isMachineCoordinate(1), " B" + abcFormat.format(abc.y))
       + conditional(machineConfiguration.isMachineCoordinate(2), " C" + abcFormat.format(abc.z)));
   }
-  
+
   var direction = machineConfiguration.getDirection(abc);
   if (!isSameDirection(direction, W.forward)) {
     error(localize("Orientation not supported."));
   }
-  
+
   if (!machineConfiguration.isABCSupported(abc)) {
     error(
       localize("Work plane is not supported") + ":"
@@ -883,14 +861,20 @@ function getWorkPlaneMachineABC(workPlane) {
 
 
 function onSection() {
+  if (isProbeOperation(currentSection)) {
+    // TAG: remove once probing is supported properly, waiting for Datron
+    error(localize("Probing is not supported for now."));
+    return;
+  }
+
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
   var section = currentSection;
   var tool = currentSection.getTool();
 
-	if (!isProbeOperation()) {
+  if (!isProbeOperation()) {
     writeComment("Operation Time: " + formatCycleTime(section.getCycleTime()));
-	}
+  }
 
   var showToolZMin = true;
   if (showToolZMin) {
@@ -1034,7 +1018,7 @@ function onSection() {
   } else {
     // not found
   }
-  
+
   if (!isProbeOperation()) {
     // set rpm
     if (tool.spindleRPM < 6000) {
@@ -1061,6 +1045,7 @@ function onSection() {
     if (properties.useParametricFeed) {
       activeFeeds = initializeActiveFeeds(section);
       if (useDatronFeedCommand) {
+/*
         var datronFeedParameter = new Array();
         for (var j = 0; j < activeFeeds.length; ++j) {
           var feedContext = activeFeeds[j];
@@ -1068,7 +1053,7 @@ function onSection() {
             name : feedContext.datronFeedName,
             feed : feedFormat.format(feedContext.feed)
           };
-          indexOfFeedContext = datronFeedParameter.map(function (e) {return e.name;}).indexOf(datronFeedCommand.name);
+          //indexOfFeedContext = datronFeedParameter.map(function (e) {return e.name;}).indexOf(datronFeedCommand.name);
           if (indexOfFeedContext == -1) {
             datronFeedParameter.push(datronFeedCommand);
           } else {
@@ -1078,12 +1063,12 @@ function onSection() {
             }
           }
         }
-
         var datronFeedCommand = "SetFeedTechnology";
         for (var i = 0; i < datronFeedParameter.length; i++) {
           datronFeedCommand += " " + datronFeedParameter[i].name + "=" + datronFeedParameter[i].feed;
         }
         writeBlock(datronFeedCommand);
+*/
       } else {
         for (var j = 0; j < activeFeeds.length; ++j) {
           var feedContext = activeFeeds[j];
@@ -1092,7 +1077,7 @@ function onSection() {
       }
     }
   } else {
-    // probing		
+    // probing
     writeBlock("PrepareXyzSensor");
   }
 
@@ -1464,7 +1449,7 @@ function onCommand(command) {
   case COMMAND_TOOL_MEASURE:
     return;
   }
-  
+
   var stringId = getCommandStringId(command);
   var mcode = mapCommand[stringId];
   if (mcode != undefined) {
@@ -1493,16 +1478,9 @@ function approach(value) {
 }
 
 function onCyclePoint(x, y, z) {
-  // TAG: anpassung das die Parameter der Zyklen im Hauptmodul angegeben werden
-  // writeBlock(getFeed(cycle.feedrate));
   var feedString = feedOutput.format(cycle.feedrate);
-  // writeBlock("SetFeedTechnology roughing=" + feedString + " approach=" + feedString + " ramp=" + feedString + " plunge=" + feedString + " finishing=" + feedString );
-  var initialPosition = getFramePosition(currentSection.getInitialPosition());
 
-  /** Convert approach to sign. */
   if (isProbeOperation()) {
-    // writeBlock("PrepareXyzSensor cycleOffsetX=" + xyzFormat.format(initialPosition.x) +
-      // " cycleOffsetY=" + xyzFormat.format(initialPosition.y) + " skipRestoring=true");
     var startPositionOffset = cycle.probeClearance + tool.cornerRadius;
   }
 
@@ -1519,308 +1497,44 @@ function onCyclePoint(x, y, z) {
     onRapid(x, y, cycle.clearance);
     threadMilling(cycle);
     break;
-    /*
-    case "probing-xy-rectangular-hole-with-island":
-    break;
-    case "probing-xy-rectangular-hole":
-    break;
-    case "probing-xy-rectangular-boss":
-    break;
+  case "probing-x":
+    forceXYZ();
+    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
+    writeBlock("Feed=" + feedString);
+    writeBlock("Line Z=" + xyzFormat.format(z - cycle.depth + tool.cornerRadius));
 
-    case "probing-xy-circular-hole":
-    break;
-    case "probing-xy-circular-hole-with-island":
-    break;
-    case "probing-xy-circular-boss":
-    break;
-
-    case "probing-x":
-
-    writeBlock("Feed=" +  feedString);
-    writeBlock("Line Z=" + xyzFormat.format(z - cycle.depth) );
-    var measureString = "EdgeMeasure "
-    cycle.approach1 == "positive" ?	measureString += "XPositive" : measureString += "XNegative";
-
-    measureString += " zeroPointShift=" + xyzFormat.format(-1 * (initialPosition.x + approach(cycle.approach1) * startPositionOffset));
-
+    var measureString = "EdgeMeasure ";
+    measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
+    measureString += " originShift=" + xyzFormat.format(-1 * (x + approach(cycle.approach1) * startPositionOffset));
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
-
     writeBlock(measureString);
+    break;
+  case "probing-y":
+    forceXYZ();
+    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
+    writeBlock("Feed=" + feedString);
+    writeBlock("Line Z=" + xyzFormat.format(z - cycle.depth + tool.cornerRadius));
 
+    var measureString = "EdgeMeasure ";
+    measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
+    measureString += " originShift=" + xyzFormat.format(-1 * (y + approach(cycle.approach1) * startPositionOffset));
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    writeBlock(measureString);
     break;
-    case "probing-y":
-    break;
-    case "probing-z":
-    break;
-     */
-    case "probing-x":
-      forceXYZ();
-      writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
-			writeBlock("Feed=" +  feedString);
-      writeBlock("Line Z=" + xyzFormat.format(z - cycle.depth + tool.cornerRadius));
-      var measureString = "EdgeMeasure "
-      cycle.approach1 == "positive" ?	measureString += "XPositive" : measureString += "XNegative";
-			measureString += " originShift=" + xyzFormat.format(-1 * (x + approach(cycle.approach1) * startPositionOffset));
-      measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
-      writeBlock(measureString);
-      break;
-			
-    case "probing-y":
-      forceXYZ();
-      writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
-			writeBlock("Feed=" +  feedString);
-      writeBlock("Line Z=" + xyzFormat.format(z - cycle.depth + tool.cornerRadius));
-      var measureString = "EdgeMeasure "
-      cycle.approach1 == "positive" ?	measureString += "YPositive" : measureString += "YNegative";
-			measureString += " originShift=" + xyzFormat.format(-1 * (y + approach(cycle.approach1) * startPositionOffset));
-      measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
-      writeBlock(measureString);
-      break;
-    case "probing-z":
-      forceXYZ();
-      writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
-			writeBlock("Feed=" +  feedString);
-      writeBlock("Line Z=" + xyzFormat.format(Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract)));
-      var measureString = "SurfaceMeasure "
-			measureString += " originZShift=" + xyzFormat.format(z - cycle.depth);
-      writeBlock(measureString);
-      break;
-/*			
-    case "probing-x-wall":	
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "X" + xyzFormat.format(cycle.width1),
-        zOutput.format(z - cycle.depth),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(cycle.probeClearance),
-        "S" + probeWorkOffsetCode // "T" + toolFormat.format(probeToolDiameterOffset)
-      );
-      break;
-    case "probing-y-wall":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Y" + xyzFormat.format(cycle.width1),
-        zOutput.format(z - cycle.depth),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(cycle.probeClearance),
-        "S" + probeWorkOffsetCode // "T" + toolFormat.format(probeToolDiameterOffset)
-      );
-      break;
-    case "probing-x-channel":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "X" + xyzFormat.format(cycle.width1),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        // not required "R" + xyzFormat.format(cycle.probeClearance),
-        "S" + probeWorkOffsetCode // "T" + toolFormat.format(probeToolDiameterOffset)
-      );
-      break;
-    case "probing-x-channel-with-island":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "X" + xyzFormat.format(cycle.width1),
-        zOutput.format(z - cycle.depth),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(-cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-y-channel":
-      yOutput.reset();
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Y" + xyzFormat.format(cycle.width1),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        // not required "R" + xyzFormat.format(cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-y-channel-with-island":
-      yOutput.reset();
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Y" + xyzFormat.format(cycle.width1),
-        zOutput.format(z - cycle.depth),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(-cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-xy-circular-boss":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9814,
-        "D" + xyzFormat.format(cycle.width1),
-        "Z" + xyzFormat.format(z - cycle.depth),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-xy-circular-hole":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9814,
-        "D" + xyzFormat.format(cycle.width1),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        // not required "R" + xyzFormat.format(cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-xy-circular-hole-with-island":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9814,
-        "Z" + xyzFormat.format(z - cycle.depth),
-        "D" + xyzFormat.format(cycle.width1),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(-cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-xy-rectangular-hole":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "X" + xyzFormat.format(cycle.width1),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        // not required "R" + xyzFormat.format(-cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Y" + xyzFormat.format(cycle.width2),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        // not required "R" + xyzFormat.format(-cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-xy-rectangular-boss":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Z" + xyzFormat.format(z - cycle.depth),
-        "X" + xyzFormat.format(cycle.width1),
-        "R" + xyzFormat.format(cycle.probeClearance),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "S" + probeWorkOffsetCode
-      );
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Z" + xyzFormat.format(z - cycle.depth),
-        "Y" + xyzFormat.format(cycle.width2),
-        "R" + xyzFormat.format(cycle.probeClearance),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-xy-rectangular-hole-with-island":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Z" + xyzFormat.format(z - cycle.depth),
-        "X" + xyzFormat.format(cycle.width1),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(-cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Z" + xyzFormat.format(z - cycle.depth),
-        "Y" + xyzFormat.format(cycle.width2),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(-cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
+  case "probing-z":
+    forceXYZ();
+    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
+    writeBlock("Feed=" + feedString);
+    writeBlock("Line Z=" + xyzFormat.format(Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract)));
 
-    case "probing-xy-inner-corner":
-      var cornerX = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter/2);
-      var cornerY = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter/2);
-      var cornerI = 0;
-      var cornerJ = 0;
-      if (cycle.probeSpacing && (cycle.probeSpacing != 0)) {
-        cornerI = cycle.probeSpacing;
-        cornerJ = cycle.probeSpacing;
-      }
-      if ((cornerI != 0) && (cornerJ != 0)) {
-        g68RotationMode = 2;
-      }
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9815, xOutput.format(cornerX), yOutput.format(cornerY),
-        conditional(cornerI != 0, "I" + xyzFormat.format(cornerI)),
-        conditional(cornerJ != 0, "J" + xyzFormat.format(cornerJ)),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        conditional((g68RotationMode == 0) || (angularProbingMode == ANGLE_PROBE_USE_CAXIS), "S" + probeWorkOffsetCode)
-      );
-      break;
-    case "probing-xy-outer-corner":
-      // writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
-			// writeBlock("Feed=" +  feedString);
-      // writeBlock("Line Z=" + xyzFormat.format(z - cycle.depth + tool.cornerRadius));
-      // var measureString = "CornerMeasure "
-      // cycle.approach1 == "positive" ?	measureString += "XPositive" : measureString += "XNegative";
-			// measureString += " originShift=" + xyzFormat.format(-1 * (x + approach(cycle.approach1) * startPositionOffset));
-      // measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);		
-		
-		
-		
-      // var cornerX = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter/2);
-      // var cornerY = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter/2);
-      // var cornerI = 0;
-      // var cornerJ = 0;
-      // if (cycle.probeSpacing && (cycle.probeSpacing != 0)) {
-        // cornerI = cycle.probeSpacing;
-        // cornerJ = cycle.probeSpacing;
-      // }
-      // if ((cornerI != 0) && (cornerJ != 0)) {
-        // g68RotationMode = 2;
-      // }
-      // writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      // writeBlock(
-        // gFormat.format(65), "P" + 9816, xOutput.format(cornerX), yOutput.format(cornerY),
-        // conditional(cornerI != 0, "I" + xyzFormat.format(cornerI)),
-        // conditional(cornerJ != 0, "J" + xyzFormat.format(cornerJ)),
-        // "Q" + xyzFormat.format(cycle.probeOvertravel),
-        // conditional((g68RotationMode == 0) || (angularProbingMode == ANGLE_PROBE_USE_CAXIS), "S" + probeWorkOffsetCode)
-      // );
-      break;
-    case "probing-x-plane-angle":
-      forceXYZ();
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9843,
-        "X" + xyzFormat.format(x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter/2)),
-        "D" + xyzFormat.format(cycle.probeSpacing),
-        "Q" + xyzFormat.format(cycle.probeOvertravel)
-      );
-      g68RotationMode = 1;
-      break;
-    case "probing-y-plane-angle":
-      forceXYZ();
-			
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9843,
-        "Y" + xyzFormat.format(y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter/2)),
-        "D" + xyzFormat.format(cycle.probeSpacing),
-        "Q" + xyzFormat.format(cycle.probeOvertravel)
-      );
-      g68RotationMode = 1;
-      break;
-*/		 
+    var measureString = "SurfaceMeasure ";
+    measureString += " originZShift=" + xyzFormat.format(z - cycle.depth);
+    writeBlock(measureString);
+    break;
   default:
     expandCyclePoint(x, y, z);
   }
   return;
-
 }
 
 function boreMilling(cycle) {
@@ -1906,7 +1620,6 @@ function dump(name, _arguments) {
   writeln(result);
 }
 
-// setWriteStack(true)
 function onSectionEnd() {
 
   writeBlock("MoveToSafetyPosition");
@@ -1922,31 +1635,11 @@ function onSectionEnd() {
 
   writeBlock("EndBlock");
 
-  // writeBlock("Spindle Off");
   spacingDepth -= 1;
 
   writeBlock("endprogram " + "# " + getOperationName(currentSection));
 
   writeBlock(" ");
-  // invalidate;
-
-  // if (currentSection.isMultiAxis() && (currentSection.getOptimizedTCPMode() == 0)) {
-  // writeBlock("rtcp 0;");
-  // }
-
-  // if (((getCurrentSectionId() + 1) >= getNumberOfSections()) ||
-  // (tool.number != getNextSection().getTool().number)) {
-  // onCommand(COMMAND_BREAK_CONTROL);
-  // }
-
-  // TAG: optional stop
-  // if (!isLastSection() && properties.optionalStop) {
-  // writeBlock("$Message = \"Start next Operation\";")
-  // writeBlock(translate("Condition") + " optional_stop, 0, 1, 0, 9999;");
-  // writeBlock(translate("Message") + " $Message, 0, 0, 0;");
-  // writeBlock("$Message = \"OK\";")
-  // }
-
   forceAny();
 }
 
