@@ -284,7 +284,7 @@ function onOpen() {
 		var aAxis = createAxis({
 				coordinate : 0,
 				table : true,
-				axis : [1, 0, 0],
+				axis : [-1, 0, 0],
 				range : [0, 360],
 				cyclic : true,
 				preference : 0
