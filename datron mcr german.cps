@@ -36,6 +36,7 @@ allowedCircularPlanes = (1 << PLANE_XY); // allow XY plane only
 // user-defined properties
 properties = {
   writeMachine: true, // write machine
+  writeVersion: false, // include version info
   optionalStop: true, // optional stop
   useParametricFeed: true, // specifies that feed should be output using Q values
   showNotes: false, // specifies that operation notes should be output
@@ -80,6 +81,7 @@ var optionalSection = false;
 var forceSpindleSpeed = false;
 var activeMovements; // do not use by default
 var currentFeedId;
+var containsProbingOperations = false;
 
 // format date + time
 var timeFormat = createFormat({decimals:0, force:true, width:2, zeropad:true});
@@ -155,6 +157,15 @@ function onOpen() {
     cOutput.disable();
   }
   
+  var numberOfSections = getNumberOfSections();
+  for (var i = 0; i < numberOfSections; ++i) {
+    var section = getSection(i);
+    if (isProbeOperation(section)) {
+      containsProbingOperations = true;
+      break;
+    }
+  }
+
   // header
   writeProgramHeader();
 }
@@ -329,6 +340,13 @@ function writeProgramHeader() {
   variablesDeclaration.push("Curr_zpno");
   variablesDeclaration.push("Zpos");
   
+  if (containsProbingOperations) {
+    variablesDeclaration.push("Xvalue");
+    variablesDeclaration.push("Yvalue");
+    variablesDeclaration.push("Zvalue");
+    variablesDeclaration.push("Newpos");
+  }
+
   writeBlock("Variable " + variablesDeclaration.join(", ") + ";");
   writeln("");
   writeBlock("Smakros " + submacrosDeclaration.join(", ") + ";");
@@ -431,11 +449,14 @@ function writeMainProgram() {
         writeln(localize("; ! ZMIN") + " = " + xyzFormat.format(zRange.getMinimum()) + "!");
       }
     }
+		if (!isProbeOperation(section)) {
     writeBlock(translate("Tool") + " T" + (tool.number) + ", 0, 0, 1, 0;");
     if (tool.spindleRPM < 6000) {
       tool.spindleRPM = 6000;
     }
     onSpindleSpeed(tool.spindleRPM);
+		}
+
     // set coolant after we have positioned at Z
     setCoolant(tool.coolant);
     var t = tolerance;
@@ -587,11 +608,15 @@ function getFeed(f) {
 }
 
 function initializeActiveFeeds(section) {
+	var activeFeeds = new Array();
+	if (section.hasAnyCycle && section.hasAnyCycle()) {
+		return activeFeeds;
+  }
   activeMovements = new Array();
   var movements = section.getMovements();
   
   var id = 0;
-  var activeFeeds = new Array();
+
 
   if (section.hasParameter("operation:tool_feedCutting")) {
     if (movements & ((1 << MOVEMENT_CUTTING) | (1 << MOVEMENT_LINK_TRANSITION) | (1 << MOVEMENT_EXTENDED))) {
@@ -615,7 +640,6 @@ function initializeActiveFeeds(section) {
       activeMovements[MOVEMENT_CUTTING] = feedContext;
     }
     ++id;
-
   }
   
   if (section.hasParameter("operation:finishFeedrate")) {
@@ -929,6 +953,10 @@ function createEndmacro() {
   writeBlock(") Endmacro;");
 }
 
+function isProbeOperation(section) {
+  return (section.hasParameter("operation-strategy") && section.getParameter("operation-strategy") == "probe");
+}
+
 function onSection() {
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
@@ -944,6 +972,12 @@ function onSection() {
     !isSameDirection(getPreviousSection().getGlobalFinalToolAxis(), currentSection.getGlobalInitialToolAxis());
 
   writeBlock("(");
+  if (isProbeOperation(currentSection)) {
+    writeBlock("T3d 9, 0, 1, 15, 17, 10, 10, 10, 10, 10, 10, 0;"); // enable probe
+    writeBlock(translate("Rpm") + " 0, 30, 0, 30;");
+  } else {
+    writeBlock("T3d 0, 0, 1, 15, 17, 10, 10, 10, 10, 10, 10, 0;"); // disable probe
+  }
   
   if (insertToolCall || newWorkOffset || newWorkPlane) {
     
@@ -1027,7 +1061,7 @@ function onSection() {
       t = getParameter("operation:tolerance");
     }
   }
-  if (properties.useSmoothing && !currentSection.isMultiAxis()) {
+  if (properties.useSmoothing && !currentSection.isMultiAxis() && !isProbeOperation(currentSection)) {
     writeBlock(translate("Contour_smoothing") + " 1, " + xyzFormat.format(t * 1.2) + ", 0.1, 110, 1;");
   }
   
@@ -1097,7 +1131,8 @@ function onSection() {
 
   if (properties.useParametricFeed /*&&
       hasParameter("operation-strategy") &&
-      (getParameter("operation-strategy") != "drill")*/) {
+      (getParameter("operation-strategy") != "drill")*/ &&
+			!(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
     if (!insertToolCall &&
         activeMovements &&
         (getCurrentSectionId() > 0) &&
@@ -1122,8 +1157,15 @@ function onSpindleSpeed(spindleSpeed) {
 function onCycle() {
 }
 
+/** Convert approach to sign. */
+function approach(value) {
+  validate((value == "positive") || (value == "negative"), "Invalid approach.");
+  return (value == "positive") ? 1 : -1;
+}
+
 function onCyclePoint(x, y, z) {
   writeBlock(getFeed(cycle.feedrate));
+  
   switch (cycleType) {
   case "bore-milling":
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.clearance) + ",0,0;");
@@ -1133,6 +1175,290 @@ function onCyclePoint(x, y, z) {
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.clearance) + ",0,0;");
     mcrThreadMilling(cycle);
     break;
+  case "probing-x":
+    forceXYZ();
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    var xValue = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
+    writeBlock("Xvalue = " + xValue + ";");
+    writeBlock("Taxyz 2, Xvalue, Y6p, Z6p, 1, 0, 0;");
+    writeBlock("Newpos = X6p + (" + xOutput.format(x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2)) + ") - Xvalue;");
+    writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
+    break;
+  case "probing-y":
+  forceXYZ();
+  writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+  writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+  var yValue = y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
+  writeBlock("Yvalue = " + yValue + ";");
+  writeBlock("Taxyz 2, X6p, Yvalue, Z6p, 1, 0, 0;");
+  writeBlock("Newpos = Y6p + (" + yOutput.format(y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2)) + ") - Yvalue;");
+  writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
+  break;
+  case "probing-z":
+    forceXYZ();
+    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    var zpos = zOutput.format(Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract));
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zpos + ", 0, 0;");
+    writeBlock(translate("Zheight") + " 0, 0, 1, 0, " + zpos + ", " + zpos + ";");
+    break;
+  case "probing-x-wall":
+  forceXYZ();
+  writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+  var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
+  var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
+  var ia = ", " + xyzFormat.format(1); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
+  var zhm = ", " + xyzFormat.format(cycle.stock); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
+  var mz = ", " + xyzFormat.format(z - cycle.depth); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
+  var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
+  var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
+  var xvx = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
+  var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
+  var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
+  var yvy = ", " + xyzFormat.format(0); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
+
+  writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+  break;
+  case "probing-y-wall":
+    forceXYZ();
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+
+    var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
+    var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
+    var ia = ", " + xyzFormat.format(1); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
+    var zhm = ", " + xyzFormat.format(cycle.stock); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
+    var mz = ", " + xyzFormat.format(z - cycle.depth); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
+    var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
+    var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
+    var xvx = ", " + xyzFormat.format(0); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
+    var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
+    var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
+    var yvy = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
+
+    writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+    break;
+
+  case "probing-x-channel":
+    forceXYZ();
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
+    var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
+    var ia = ", " + xyzFormat.format(0); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
+    var zhm = ", " + xyzFormat.format(cycle.stock); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
+    var mz = ", " + xyzFormat.format(z - cycle.depth); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
+    var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
+    var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
+    var xvx = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
+    var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
+    var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
+    var yvy = ", " + xyzFormat.format(0); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
+
+    writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+    break;
+  // case "probing-x-channel-with-island":
+    // writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
+    // writeBlock(
+      // gFormat.format(65), "P" + 9812,
+      // "X" + xyzFormat.format(cycle.width1),
+      // zOutput.format(z - cycle.depth),
+      // "Q" + xyzFormat.format(cycle.probeOvertravel),
+      // "R" + xyzFormat.format(-cycle.probeClearance),
+      // "S" + probeWorkOffsetCode);
+    // break;
+  case "probing-y-channel":
+    forceXYZ();
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
+    var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
+    var ia = ", " + xyzFormat.format(0); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
+    var zhm = ", " + xyzFormat.format(cycle.stock); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
+    var mz = ", " + xyzFormat.format(z - cycle.depth); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
+    var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
+    var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
+    var xvx = ", " + xyzFormat.format(0); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
+    var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
+    var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
+    var yvy = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
+
+    writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+    break;
+/*        
+    case "probing-y-channel-with-island":
+      yOutput.reset();
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9812,
+        "Y" + xyzFormat.format(cycle.width1),
+        zOutput.format(z - cycle.depth),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        "R" + xyzFormat.format(-cycle.probeClearance),
+        "S" + probeWorkOffsetCode
+      );
+      break;
+    case "probing-xy-circular-boss":
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9814,
+        "D" + xyzFormat.format(cycle.width1),
+        "Z" + xyzFormat.format(z - cycle.depth),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        "R" + xyzFormat.format(cycle.probeClearance),
+        "S" + probeWorkOffsetCode
+      );
+      break;
+    case "probing-xy-circular-hole":
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9814,
+        "D" + xyzFormat.format(cycle.width1),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        // not required "R" + xyzFormat.format(cycle.probeClearance),
+        "S" + probeWorkOffsetCode
+      );
+      break;
+    case "probing-xy-circular-hole-with-island":
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9814,
+        "Z" + xyzFormat.format(z - cycle.depth),
+        "D" + xyzFormat.format(cycle.width1),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        "R" + xyzFormat.format(-cycle.probeClearance),
+        "S" + probeWorkOffsetCode
+      );
+      break;
+    case "probing-xy-rectangular-hole":
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9812,
+        "X" + xyzFormat.format(cycle.width1),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        // not required "R" + xyzFormat.format(-cycle.probeClearance),
+        "S" + probeWorkOffsetCode
+      );
+      writeBlock(
+        gFormat.format(65), "P" + 9812,
+        "Y" + xyzFormat.format(cycle.width2),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        // not required "R" + xyzFormat.format(-cycle.probeClearance),
+        "S" + probeWorkOffsetCode
+      );
+      break;
+    case "probing-xy-rectangular-boss":
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9812,
+        "Z" + xyzFormat.format(z - cycle.depth),
+        "X" + xyzFormat.format(cycle.width1),
+        "R" + xyzFormat.format(cycle.probeClearance),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        "S" + probeWorkOffsetCode
+      );
+      writeBlock(
+        gFormat.format(65), "P" + 9812,
+        "Z" + xyzFormat.format(z - cycle.depth),
+        "Y" + xyzFormat.format(cycle.width2),
+        "R" + xyzFormat.format(cycle.probeClearance),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        "S" + probeWorkOffsetCode
+      );
+      break;
+    case "probing-xy-rectangular-hole-with-island":
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9812,
+        "Z" + xyzFormat.format(z - cycle.depth),
+        "X" + xyzFormat.format(cycle.width1),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        "R" + xyzFormat.format(-cycle.probeClearance),
+        "S" + probeWorkOffsetCode
+      );
+      writeBlock(
+        gFormat.format(65), "P" + 9812,
+        "Z" + xyzFormat.format(z - cycle.depth),
+        "Y" + xyzFormat.format(cycle.width2),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        "R" + xyzFormat.format(-cycle.probeClearance),
+        "S" + probeWorkOffsetCode
+      );
+      break;
+
+    case "probing-xy-inner-corner":
+      var cornerX = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter/2);
+      var cornerY = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter/2);
+      var cornerI = 0;
+      var cornerJ = 0;
+      if (cycle.probeSpacing && (cycle.probeSpacing != 0)) {
+        cornerI = cycle.probeSpacing;
+        cornerJ = cycle.probeSpacing;
+      }
+      if ((cornerI != 0) && (cornerJ != 0)) {
+        g68RotationMode = 2;
+      }
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9815, xOutput.format(cornerX), yOutput.format(cornerY),
+        conditional(cornerI != 0, "I" + xyzFormat.format(cornerI)),
+        conditional(cornerJ != 0, "J" + xyzFormat.format(cornerJ)),
+        "Q" + xyzFormat.format(cycle.probeOvertravel),
+        conditional((g68RotationMode == 0) || (angularProbingMode == ANGLE_PROBE_USE_CAXIS), "S" + probeWorkOffsetCode)
+      );
+      break;
+    case "probing-xy-outer-corner":
+      // writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
+			// writeBlock("Feed=" +  feedString);
+      // writeBlock("Line Z=" + xyzFormat.format(z - cycle.depth + tool.cornerRadius));
+      // var measureString = "CornerMeasure "
+      // cycle.approach1 == "positive" ?	measureString += "XPositive" : measureString += "XNegative";
+			// measureString += " originShift=" + xyzFormat.format(-1 * (x + approach(cycle.approach1) * startPositionOffset));
+      // measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+
+
+
+      // var cornerX = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter/2);
+      // var cornerY = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter/2);
+      // var cornerI = 0;
+      // var cornerJ = 0;
+      // if (cycle.probeSpacing && (cycle.probeSpacing != 0)) {
+        // cornerI = cycle.probeSpacing;
+        // cornerJ = cycle.probeSpacing;
+      // }
+      // if ((cornerI != 0) && (cornerJ != 0)) {
+        // g68RotationMode = 2;
+      // }
+      // writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
+      // writeBlock(
+        // gFormat.format(65), "P" + 9816, xOutput.format(cornerX), yOutput.format(cornerY),
+        // conditional(cornerI != 0, "I" + xyzFormat.format(cornerI)),
+        // conditional(cornerJ != 0, "J" + xyzFormat.format(cornerJ)),
+        // "Q" + xyzFormat.format(cycle.probeOvertravel),
+        // conditional((g68RotationMode == 0) || (angularProbingMode == ANGLE_PROBE_USE_CAXIS), "S" + probeWorkOffsetCode)
+      // );
+      break;
+    case "probing-x-plane-angle":
+      forceXYZ();
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9843,
+        "X" + xyzFormat.format(x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter/2)),
+        "D" + xyzFormat.format(cycle.probeSpacing),
+        "Q" + xyzFormat.format(cycle.probeOvertravel)
+      );
+      g68RotationMode = 1;
+      break;
+    case "probing-y-plane-angle":
+      forceXYZ();
+
+      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
+      writeBlock(
+        gFormat.format(65), "P" + 9843,
+        "Y" + xyzFormat.format(y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter/2)),
+        "D" + xyzFormat.format(cycle.probeSpacing),
+        "Q" + xyzFormat.format(cycle.probeOvertravel)
+      );
+      g68RotationMode = 1;
+      break;
+*/
   default:
     expandCyclePoint(x, y, z);
   }
@@ -1384,6 +1710,8 @@ function translate(text) {
       return "Beschreibung";
     case "Part size":
       return "Groesse";
+    case "Zheight":
+      return "Zhmess";
     case "\r\n________________________________________" +
          "\r\n|              error                    |" +
          "\r\n|                                       |" +
@@ -1484,7 +1812,9 @@ function onSectionEnd() {
       (tool.number != getNextSection().getTool().number)) {
     onCommand(COMMAND_BREAK_CONTROL);
   }
-  
+  if (isProbeOperation(currentSection)) {
+    writeBlock(translate("Rpm") + " 1, 30, 0, 30;");
+  }
   if (!isLastSection() && properties.optionalStop) {
     writeBlock("$Message = \"Start next Operation\";");
     writeBlock(translate("Condition") + " optional_stop, 0, 1, 0, 9999;");
@@ -1497,6 +1827,16 @@ function onSectionEnd() {
 
 function onClose() {
   writeln("");
+
+  if (properties.writeVersion) {
+    if ((typeof getHeaderVersion == "function") && getHeaderVersion()) {
+      writeComment(localize("post version") + ": " + getHeaderVersion());
+    }
+    if ((typeof getHeaderDate == "function") && getHeaderDate()) {
+      writeComment(localize("post modified") + ": " + getHeaderDate());
+    }
+  }
+
   // dump machine configuration
   var vendor = machineConfiguration.getVendor();
   var model = machineConfiguration.getModel();
