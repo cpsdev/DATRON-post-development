@@ -1203,21 +1203,21 @@ function onCyclePoint(x, y, z) {
     writeBlock(translate("Zheight") + " 0, 0, 1, 0, " + zpos + ", " + zpos + ";");
     break;
   case "probing-x-wall":
-  forceXYZ();
-  writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-  var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
-  var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
-  var ia = ", " + xyzFormat.format(1); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
-  var zhm = ", " + xyzFormat.format(cycle.stock); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
-  var mz = ", " + xyzFormat.format(z - cycle.depth); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
-  var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
-  var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
-  var xvx = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
-  var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
-  var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
-  var yvy = ", " + xyzFormat.format(0); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
+    forceXYZ();
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
+    var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
+    var ia = ", " + xyzFormat.format(1); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
+    var zhm = ", " + xyzFormat.format(0); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen  alternativ cycle.stock
+    var mz = ", " + xyzFormat.format((z - cycle.depth - cycle.stock) * -1); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
+    var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
+    var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
+    var xvx = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
+    var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
+    var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
+    var yvy = ", " + xyzFormat.format(0); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
 
-  writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+    writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
   break;
   case "probing-y-wall":
     forceXYZ();
@@ -1226,8 +1226,8 @@ function onCyclePoint(x, y, z) {
     var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
     var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
     var ia = ", " + xyzFormat.format(1); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
-    var zhm = ", " + xyzFormat.format(cycle.stock); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
-    var mz = ", " + xyzFormat.format(z - cycle.depth); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
+    var zhm = ", " + xyzFormat.format(0); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
+    var mz = ", " + xyzFormat.format((z - cycle.depth - cycle.stock) * -1); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
     var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
     var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
     var xvx = ", " + xyzFormat.format(0); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
@@ -1244,11 +1244,11 @@ function onCyclePoint(x, y, z) {
     var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
     var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
     var ia = ", " + xyzFormat.format(0); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
-    var zhm = ", " + xyzFormat.format(cycle.stock); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
-    var mz = ", " + xyzFormat.format(z - cycle.depth); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
+    var zhm = ", " + xyzFormat.format(0); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
+    var mz = ", " + xyzFormat.format((z - cycle.depth - cycle.stock) * -1); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
     var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
     var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
-    var xvx = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
+    var xvx = ", " + xyzFormat.format(Math.max(cycle.width1 / 2 - 10,0.1)) ; //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
     var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
     var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
     var yvy = ", " + xyzFormat.format(0); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
@@ -1271,14 +1271,14 @@ function onCyclePoint(x, y, z) {
     var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
     var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
     var ia = ", " + xyzFormat.format(0); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
-    var zhm = ", " + xyzFormat.format(cycle.stock); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
-    var mz = ", " + xyzFormat.format(z - cycle.depth); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
+    var zhm = ", " + xyzFormat.format(0); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
+    var mz = ", " + xyzFormat.format((z - cycle.depth - cycle.stock) * -1); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
     var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
     var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
     var xvx = ", " + xyzFormat.format(0); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
     var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
     var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
-    var yvy = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
+    var yvy = ", " + xyzFormat.format(Math.max(cycle.width1 / 2 - 10,0.1)); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
 
     writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
     break;
