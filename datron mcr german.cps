@@ -6,7 +6,7 @@
 
   $Revision$
   $Date$
-  
+
   FORKID {1FDF0D08-45B6-4EAD-A71D-7BA04089886D}
 */
 
@@ -156,7 +156,7 @@ function onOpen() {
   if (!machineConfiguration.isMachineCoordinate(2)) {
     cOutput.disable();
   }
-  
+
   var numberOfSections = getNumberOfSections();
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
@@ -176,7 +176,7 @@ function getOperationDescription(section) {
     operationComment = section.getParameter("operation-comment");
     operationComment = formatComment(operationComment);
   }
-    
+
   var cycleTypeString = "";
   if (section.hasParameter("operation:cycleType")) {
     cycleTypeString = localize(section.getParameter("operation:cycleType")).toString();
@@ -209,7 +209,7 @@ function writeToolTable() {
 function writeProgramHeader() {
   var date =  timeFormat.format(nowDay) + "." + timeFormat.format(nowMonth) + "." + now.getFullYear();
   var time = timeFormat.format(nowHour) + ":" + timeFormat.format(nowMin);
-  
+
   if (properties.useTimeStamp) {
     writeBlock("!Makro file ; generated at " + date + " - " + time + " V9.09F!");
   } else {
@@ -221,7 +221,7 @@ function writeProgramHeader() {
     writeBlock("!Makroprojekt description!");
   }
   writeln("");
-  
+
   writeln("!Please make sure that the language on your control is set to " + "\"" + language + "\"" + "!");
   switch (language) {
   case "en":
@@ -245,22 +245,22 @@ function writeProgramHeader() {
   }
 
   writeln("");
-  
+
   var variablesDeclaration = new Array();
   var submacrosDeclaration = new Array();
   var dialogsDeclaration = new Array();
-  
+
   variablesDeclaration.push("optional_stop");
   variablesDeclaration.push("$Message");
   if (getNumberOfSections() >= maxMaskLength) {
     submacrosDeclaration.push("Initvariables");
   }
-  
+
   dialogsDeclaration.push("_maske _haupt, " + "1000" + ", 0, " + "\"" + translate("Submacro") + " " + translate("Description") + "\"");
   if (properties.optionalStop) {
     dialogsDeclaration.push("_feld optional_stop, 1, 0, 1, 0, 1, 2, 1," + " \"" + "optional_stop" + "\"" + "," + " \"" + "optional_stop" + "\"");
   }
-    
+
   //write variables declaration
   var tools = getToolTable();
   for (var i = 0; i < tools.getNumberOfTools(); ++i) {
@@ -290,7 +290,7 @@ function writeProgramHeader() {
       }
     }
   }
-  
+
   if (!is3D()) {
     variablesDeclaration.push("X_initial_pos");
     variablesDeclaration.push("Y_initial_pos");
@@ -328,7 +328,7 @@ function writeProgramHeader() {
     submacrosDeclaration.push("Initposition");
     submacrosDeclaration.push("Endmacro");
   }
-    
+
   if (useRTCPSimu) {
     submacrosDeclaration.push("Transformpath");
   }
@@ -339,10 +339,12 @@ function writeProgramHeader() {
   submacrosDeclaration.push("Retractzmax");
   variablesDeclaration.push("Curr_zpno");
   variablesDeclaration.push("Zpos");
-  
+
   if (containsProbingOperations) {
-    variablesDeclaration.push("Xvalue");
-    variablesDeclaration.push("Yvalue");
+    variablesDeclaration.push("Xvalue1");
+    variablesDeclaration.push("Xvalue2");
+    variablesDeclaration.push("Yvalue1");
+    variablesDeclaration.push("Yvalue2");
     variablesDeclaration.push("Zvalue");
     variablesDeclaration.push("Newpos");
   }
@@ -358,7 +360,7 @@ function writeProgramHeader() {
     writeBlock("_exit Endmacro;");
     writeln("");
   }
-      
+
   if (!is3D()) {
     writeBlock("_maske Transformoffset, 4, 0, \"create a new coordinate system with the given rotation values\"");
     writeBlock("_feld A, 4, 8, 0, -120, 120, 0, 1, \"alpha\", \"rotation around x axis\"");
@@ -392,7 +394,7 @@ function writeProgramHeader() {
     createPositionInitSubmacro();
     createEndmacro();
   }
-  
+
   if (!is3D()) {
     createRtcpTransformationSubmacro();
   }
@@ -400,7 +402,7 @@ function writeProgramHeader() {
   if (useRTCPSimu) {
     createRtcpSimuSubmacro();
   }
-  
+
   createRetractMacro();
 }
 
@@ -410,12 +412,12 @@ function writeMainProgram() {
   if (numberOfSections >= maxMaskLength) {
     writeBlock(translate("Submacro") + " Initvariables;");
   }
-  
+
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
     var Description = getOperationDescription(section);
     var sectionID = i+1;
-    
+
     var sectionName = formatVariable("Sm_" + Description);
     var maskName = formatVariable("Op_" + Description);
 
@@ -449,11 +451,11 @@ function writeMainProgram() {
         writeln(localize("; ! ZMIN") + " = " + xyzFormat.format(zRange.getMinimum()) + "!");
       }
     }
-		if (!isProbeOperation(section)) {
-    writeBlock(translate("Tool") + " T" + (tool.number) + ", 0, 0, 1, 0;");
-    if (tool.spindleRPM < 6000) {
-      tool.spindleRPM = 6000;
-    }
+    if (!isProbeOperation(section)) {
+      writeBlock(translate("Tool") + " T" + (tool.number) + ", 0, 0, 1, 0;");
+      if (tool.spindleRPM < 6000) {
+        tool.spindleRPM = 6000;
+      }
     onSpindleSpeed(tool.spindleRPM);
 		}
 
@@ -486,7 +488,7 @@ function writeMainProgram() {
         writeBlock(formatVariable(feedContext.description) + " = " + feedFormat.format(feedContext.feed) + (unit == MM ? ";!m/min!" : ";!inch/min!"));
       }
     }
-    
+
     // wcs
     var workOffset;
     if (!is3D()) {
@@ -504,7 +506,7 @@ function writeMainProgram() {
         }
       }
     }
-    
+
     writeBlock(translate("Submacro") + " " + sectionName + ";");
     writeBlock(translate("Label") + " " + sectionID + ";");
   }
@@ -513,7 +515,7 @@ function writeMainProgram() {
 function writeWorkpiece() {
   var workpiece = getWorkpiece();
   var delta = Vector.diff(workpiece.upper, workpiece.lower);
-  
+
   writeBlock("; !" + translate("Workpiece dimensions") + ":!");
   writeBlock(
     "; !min:     X: " + workpieceFormat.format(workpiece.lower.x) + ";" +
@@ -530,7 +532,7 @@ function writeWorkpiece() {
     " Y: " + workpieceFormat.format(delta.y) + ";" +
     " Z: " + workpieceFormat.format(delta.z) + "!"
   );
-  
+
   // insert maximum deep of the hole program
 
   writeBlock(
@@ -614,7 +616,7 @@ function initializeActiveFeeds(section) {
   }
   activeMovements = new Array();
   var movements = section.getMovements();
-  
+
   var id = 0;
 
 
@@ -641,7 +643,7 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-  
+
   if (section.hasParameter("operation:finishFeedrate")) {
     if (movements & (1 << MOVEMENT_FINISH_CUTTING)) {
       var feedContext = new FeedContext(id, localize("Finish"), section.getParameter("operation:finishFeedrate"));
@@ -657,7 +659,7 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-  
+
   if (section.hasParameter("operation:tool_feedEntry")) {
     if (movements & (1 << MOVEMENT_LEAD_IN)) {
       var feedContext = new FeedContext(id, localize("Entry"), section.getParameter("operation:tool_feedEntry"));
@@ -693,7 +695,7 @@ function initializeActiveFeeds(section) {
     }
     ++id;
   }
-  
+
   if (section.hasParameter("operation:reducedFeedrate")) {
     if (movements & (1 << MOVEMENT_REDUCED)) {
       var feedContext = new FeedContext(id, localize("Reduced"), section.getParameter("operation:reducedFeedrate"));
@@ -741,7 +743,7 @@ function forceWorkPlane() {
 
 function setWorkPlane(abc) {
   forceWorkPlane(); // always need the new workPlane
-  
+
   if (!machineConfiguration.isMultiAxisConfiguration()) {
     return; // ignore
   }
@@ -752,7 +754,7 @@ function setWorkPlane(abc) {
         abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
     return; // no change
   }
-  
+
   gMotionModal.reset();
   if (!is3D()) {
     writeBlock("A_temp = " + (machineConfiguration.isMachineCoordinate(0) ? abcFormat.format(abc.x) : "a6p") + " - A_delta;");
@@ -760,14 +762,14 @@ function setWorkPlane(abc) {
     writeBlock("C_temp = " + (machineConfiguration.isMachineCoordinate(2) ? abcFormat.format(abc.z) : "c6p") + " - C_delta;");
     writeBlock("Axyzabc 1, x6p, y6p, z6p, A_temp, B_temp, C_temp;");
   }
-  
+
   if (!is3D() && !currentSection.isMultiAxis()) {
     writeBlock(translate("Submacro") + " Transformoffset 0, ",
     abcFormat.format(abc.x) +", ",
     abcFormat.format(abc.y) +", ",
     abcFormat.format(abc.z) +";");
   }
-  
+
   currentWorkPlaneABC = abc;
 }
 
@@ -787,7 +789,7 @@ function getWorkPlaneMachineABC(workPlane) {
   } else {
     abc = machineConfiguration.getPreferredABC(abc);
   }
-  
+
   try {
     abc = machineConfiguration.remapABC(abc);
     currentMachineABC = abc;
@@ -800,13 +802,13 @@ function getWorkPlaneMachineABC(workPlane) {
     );
     return undefined;
   }
-  
+
   var direction = machineConfiguration.getDirection(abc);
   if (!isSameDirection(direction, W.forward)) {
     error(localize("Orientation not supported."));
     return undefined;
   }
-  
+
   if (!machineConfiguration.isABCSupported(abc)) {
     error(
       localize("Work plane is not supported") + ":"
@@ -825,7 +827,7 @@ function getWorkPlaneMachineABC(workPlane) {
     var R = machineConfiguration.getRemainingOrientation(abc, W);
     setRotation(R);
   }
-  
+
   return abc;
 }
 
@@ -867,11 +869,11 @@ function createRtcpSimuSubmacro() {
   writeBlock("X_new = X - X_trans;");
   writeBlock("Y_new = Y - Y_trans;");
   writeBlock("Z_new = ( ( Isinitialposition + 1 ) % 2 ) * ( Z - Z_trans ) + Isinitialposition * Z6max;");
-   
+
   writeBlock("A_temp =  A - A_delta;");
   writeBlock("B_temp = B - B_delta;");
   writeBlock("C_temp = C - C_delta;");
-  
+
   writeBlock("Axyzabc Israpid, X_new, Y_new, Z_new, A_temp, B_temp, C_temp;");
   writeBlock(") Transformpath;");
 */
@@ -964,7 +966,7 @@ function onSection() {
   var insertToolCall = forceToolAndRetract || isFirstSection() ||
     currentSection.getForceToolChange && currentSection.getForceToolChange() ||
     (tool.number != getPreviousSection().getTool().number);
-  
+
   var retracted = false; // specifies that the tool has been retracted to the safe plane
   var newWorkOffset = isFirstSection() ||
     (getPreviousSection().workOffset != currentSection.workOffset); // work offset changes
@@ -978,9 +980,9 @@ function onSection() {
   } else {
     writeBlock("T3d 0, 0, 1, 15, 17, 10, 10, 10, 10, 10, 10, 0;"); // disable probe
   }
-  
+
   if (insertToolCall || newWorkOffset || newWorkPlane) {
-    
+
     // retract to safe plane
     retracted = true;
     writeBlock(translate("Submacro") + " Retractzmax;");
@@ -1002,7 +1004,7 @@ function onSection() {
       (rpmFormat.areDifferent(tool.spindleRPM, sOutput.getCurrent())) ||
       (tool.clockwise != getPreviousSection().getTool().clockwise)) {
     forceSpindleSpeed = false;
-    
+
     if (tool.spindleRPM < 6000) {
       tool.spindleRPM = 6000;
     }
@@ -1024,7 +1026,7 @@ function onSection() {
 
   if (machineConfiguration.isMultiAxisConfiguration()) { // use 5-axis indexing for multi-axis mode
     // set working plane after datum shift
-  
+
     if (currentSection.isMultiAxis()) {
       forceWorkPlane();
       cancelTransformation();
@@ -1054,7 +1056,7 @@ function onSection() {
   }
 
   forceAny();
-  
+
   var t = tolerance;
   if (hasParameter("operation:tolerance")) {
     if (t < getParameter("operation:tolerance")) {
@@ -1064,18 +1066,18 @@ function onSection() {
   if (properties.useSmoothing && !currentSection.isMultiAxis() && !isProbeOperation(currentSection)) {
     writeBlock(translate("Contour_smoothing") + " 1, " + xyzFormat.format(t * 1.2) + ", 0.1, 110, 1;");
   }
-  
+
   var initialPosition = getFramePosition(currentSection.getInitialPosition());
   if (!retracted) {
     if (getCurrentPosition().z < initialPosition.z) {
       writeBlock(translate("Submacro") + " Retractzmax;");
     }
   }
-  
+
   if (currentSection.isMultiAxis() && (currentSection.getOptimizedTCPMode() == 0)) {
     writeBlock("rtcp 1;");
   }
-  
+
   if (currentSection.isMultiAxis()) {
     var abc = currentSection.getInitialToolAxisABC();
     var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(abc.x) : "a6p");
@@ -1165,7 +1167,7 @@ function approach(value) {
 
 function onCyclePoint(x, y, z) {
   writeBlock(getFeed(cycle.feedrate));
-  
+
   switch (cycleType) {
   case "bore-milling":
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.clearance) + ",0,0;");
@@ -1197,13 +1199,37 @@ function onCyclePoint(x, y, z) {
   break;
   case "probing-z":
     forceXYZ();
-    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     var zpos = zOutput.format(Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract));
     writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zpos + ", 0, 0;");
     writeBlock(translate("Zheight") + " 0, 0, 1, 0, " + zpos + ", " + zpos + ";");
     break;
   case "probing-x-wall":
     forceXYZ();
+    var touchPositionX1 = x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionX2 = x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+
+    forceXYZ();
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Xvalue1 = " + xyzFormat.format(touchPositionX1) + ";");
+    writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
+
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Xvalue2 = " + xyzFormat.format(touchPositionX2) + ";");
+    writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
+
+    // writeBlock("Newpos = X6p + (" + xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ") - Xvalue;");
+    writeBlock("Newpos = ((Xvalue1 + Xvalue2) / 2);");
+
+    writeBlock("String 1, Newpos, 1, 10, 2, 0;")
+    writeBlock("Melde 1, 0, 1, 0;")
+
+
+    writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
+    /*
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
     var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
@@ -1218,9 +1244,35 @@ function onCyclePoint(x, y, z) {
     var yvy = ", " + xyzFormat.format(0); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
 
     writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+    */
   break;
   case "probing-y-wall":
     forceXYZ();
+    var touchPositionY1 = y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY2 = y - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+
+    forceXYZ();
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Yvalue1 = " + xyzFormat.format(touchPositionY1) + ";");
+    writeBlock("Taxyz 2, X6p, Yvalue1, Z6p, 1, 0, 0;");
+
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
+    writeBlock("Taxyz 2, X6p, Yvalue2, Z6p, 1, 0, 0;");
+
+    // writeBlock("Newpos = X6p + (" + xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ") - Xvalue;");
+    writeBlock("Newpos = ((Yvalue1 + Yvalue2) / 2);");
+
+    writeBlock("String 1, Newpos, 1, 10, 2, 0;")
+    writeBlock("Melde 1, 0, 1, 0;")
+
+
+    writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
+/*
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
 
     var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
@@ -1236,6 +1288,7 @@ function onCyclePoint(x, y, z) {
     var yvy = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
 
     writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+    */
     break;
 
   case "probing-x-channel":
@@ -1282,7 +1335,7 @@ function onCyclePoint(x, y, z) {
 
     writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
     break;
-/*        
+/*
     case "probing-y-channel-with-island":
       yOutput.reset();
       writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
@@ -1477,7 +1530,7 @@ function mcrBoreMilling(cycle) {
   var fastZPlunge = cycle.clearance - cycle.retract;
   var slowZPlunge = cycle.retract - cycle.stock;
   var maxZDepthPerStep = tool.fluteLength * 0.8;
-  
+
   var block = subst(localize("Drill") + " %1, %5, %2, %3, %4, 1, %6, %7, %8;",
     xyzFormat.format(fastZPlunge),
     xyzFormat.format(cycle.diameter),
@@ -1496,7 +1549,7 @@ function mcrThreadMilling(cycle) {
   var fastZPlunge = cycle.clearance - cycle.retract;
   var slowZPlunge = cycle.retract - cycle.stock;
   var threadDirection = (cycle.threading == "right") ? 1 : -1;
-    
+
   var stringSubst = new StringSubstitution();
   stringSubst.setValue("ThreadNorm", 0);
   stringSubst.setValue("ThreadMillingDirection", 0);
@@ -1512,7 +1565,7 @@ function mcrThreadMilling(cycle) {
   stringSubst.setValue("Predrill", 0);
   stringSubst.setValue("ThreadID", 0);
   stringSubst.setValue("Sink", 1); // 0 = with sink, 1 = without sink
-    
+
   writeBlock(
     stringSubst.substitute(translate("Thread") + " ${ThreadNorm}, ${ThreadMillingDirection}, ${ThreadDiameter}, ${InnerOuter}, ${Pitch}, ${HoleDepth}, ${ThreadDepth}, ${CleanXY}, ${FastZMove}, ${SlowZMove}, ${ThreadMillAngle}, ${Predrill}, ${Sink}, ${ThreadID};")
   );
@@ -1545,7 +1598,7 @@ function onRapid(_x, _y, _z) {
 function onLinear(_x, _y, _z, feed) {
   var xyz = xOutput.format(_x) + ", " + yOutput.format(_y) + ", " + zOutput.format(_z);
   var f = getFeed(feed);
-  
+
   if (f) {
     writeBlock(f);
   }
@@ -1589,7 +1642,7 @@ function onRapid5D(_x, _y, _z, _a, _b, _c) {
   var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "a6p");
   var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(_b) : "b6p");
   var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(_c) : "c6p");
-  
+
   if (currentSection.isOptimizedForMachine() && useRTCPSimu) {
     // non TCP
     writeBlock(translate("Submacro") + " Transformpath 0, 1, 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ";");
@@ -1605,14 +1658,14 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
     error(localize("Radius compensation cannot be activated/deactivated for 5-axis move."));
     return;
   }
-  
+
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
   var z = zOutput.format(_z);
   var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "a6p");
   var b = (machineConfiguration.isMachineCoordinate(1) ? aOutput.format(_b) : "b6p");
   var c = (machineConfiguration.isMachineCoordinate(2) ? aOutput.format(_c) : "c6p");
-  
+
   writeBlock(getFeed(feed));
   if (x || y || z || a || b || c) {
     if (useRTCPSimu) {
@@ -1639,15 +1692,15 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
     linearize(t);
     return;
   }
-  
+
   var start = getCurrentPosition();
   var startAngle = Math.atan2(start.y - cy, start.x - cx);
   var endAngle = Math.atan2(y - cy, x - cx);
-  
+
   if (f) {
     writeBlock(f);
   }
-  
+
   writeln(
     translate("Circle")  + " " +
     xyzFormat.format(2 * getCircularRadius()) + ", " +
@@ -1733,14 +1786,14 @@ function translate(text) {
   }
   return text; // use English
 }
-  
+
 var currentCoolantMode = COOLANT_OFF;
 
 function setCoolant(coolant) {
   if (coolant == currentCoolantMode) {
     return; // coolant is already active
   }
-  
+
   if (coolant == COOLANT_OFF) {
     writeBlock(translate("Coolant") + " 4, 0" + ", 2" + ", 0;"); // coolant off
     currentCoolantMode = COOLANT_OFF;
@@ -1793,7 +1846,7 @@ function onCommand(command) {
   case COMMAND_TOOL_MEASURE:
     return;
   }
-  
+
   var stringId = getCommandStringId(command);
   var mcode = mapCommand[stringId];
   if (mcode != undefined) {
@@ -1841,7 +1894,7 @@ function onClose() {
   var vendor = machineConfiguration.getVendor();
   var model = machineConfiguration.getModel();
   var description = machineConfiguration.getDescription();
-  
+
   writeComment("Please make sure that the language on your control is set to " + "\"" + language + "\"");
   if (properties.writeMachine && (vendor || model || description)) {
     writeComment(localize("Machine"));
@@ -1857,23 +1910,23 @@ function onClose() {
   }
   writeToolTable();
   writeWorkpiece();
-  
+
   if (!is3D()) {
     writeBlock(translate("Submacro") + " Initposition;");
   }
-  
+
   writeMainProgram();
   writeComment("###############################################");
   onCommand(COMMAND_COOLANT_OFF);
-  
+
   if (!is3D()) {
     writeBlock(translate("Submacro") + " Endmacro;");
   }
-  
+
   writeBlock(translate("Submacro") + " Retractzmax;");
-  
+
   setWorkPlane(new Vector(0, 0, 0)); // reset working plane
-  
+
   if (properties.useParkPosition) {
     writeBlock("Park;");
   } else {
