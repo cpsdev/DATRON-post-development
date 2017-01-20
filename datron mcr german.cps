@@ -346,7 +346,8 @@ function writeProgramHeader() {
     variablesDeclaration.push("Yvalue1");
     variablesDeclaration.push("Yvalue2");
     variablesDeclaration.push("Zvalue");
-    variablesDeclaration.push("Newpos");
+    variablesDeclaration.push("Newpos");    
+    variablesDeclaration.push("Rotationvalue");
   }
 
   writeBlock("Variable " + variablesDeclaration.join(", ") + ";");
@@ -1669,8 +1670,8 @@ function onCyclePoint(x, y, z) {
     writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.probeSpacing / 2) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
-    writeBlock("Rotation = Arctan ( ( Xvalue2 - Xvalue1 ) / " + "(" + (y + cycle.probeSpacing / 2) + "-" +  (y - cycle.probeSpacing / 2) + ") );");
-    writeBlock("Drehung Rotation, 1, 1, 1, 0, 0;");
+    writeBlock("Rotationvalue = Arctan ( ( Xvalue2 - Xvalue1 ) / " + "(" + (y + cycle.probeSpacing / 2) + "-" +  (y - cycle.probeSpacing / 2) + ") );");
+    writeBlock(translate("Rotation") + " Rotationvalue, 1, 1, 1, 0, 0;");
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1689,8 +1690,8 @@ function onCyclePoint(x, y, z) {
     writeBlock("Taxyz 2, X6p, Yvalue1, Z6p, 1, 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.probeSpacing / 2) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Taxyz 2, X6p, Yvalue2, Z6p, 1, 0, 0;");
-    writeBlock("Rotation = Arctan ( ( Yvalue2 - Yvalue1 ) / " + "(" + (x + cycle.probeSpacing / 2) + "-" +  (x - cycle.probeSpacing / 2) + ") );");
-    writeBlock("Drehung Rotation, 1, 1, 1, 0, 0;");
+    writeBlock("Rotationvalue = Arctan ( ( Yvalue2 - Yvalue1 ) / " + "(" + (x + cycle.probeSpacing / 2) + "-" +  (x - cycle.probeSpacing / 2) + ") );");
+    writeBlock(translate("Rotation") + " Rotationvalue, 1, 1, 1, 0, 0;");
     
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1948,6 +1949,8 @@ function translate(text) {
       return "Groesse";
     case "Zheight":
       return "Zhmess";
+    case "Rotation":
+      return "Drehung";      
     case "\r\n________________________________________" +
          "\r\n|              error                    |" +
          "\r\n|                                       |" +
