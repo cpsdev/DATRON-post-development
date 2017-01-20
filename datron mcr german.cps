@@ -139,8 +139,8 @@ function writeComment(text) {
 function onOpen() {
 
   if (false) { // note: setup your machine here
-    var aAxis = createAxis({coordinate:0, table:true, axis:[-1, 0, 0], range:[-102.5,0], preference:-1});
-    var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, -1], range:[-360,360], cyclic:true, preference:0});
+    var aAxis = createAxis({coordinate:0, table:true, axis:[-1, 0, 0], range:[-102.5, 0], preference:-1});
+    var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, -1], range:[-360, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis, cAxis);
 
     setMachineConfiguration(machineConfiguration);
@@ -1188,15 +1188,15 @@ function onCyclePoint(x, y, z) {
     writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
     break;
   case "probing-y":
-  forceXYZ();
-  writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-  writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-  var yValue = y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
-  writeBlock("Yvalue = " + yValue + ";");
-  writeBlock("Taxyz 2, X6p, Yvalue, Z6p, 1, 0, 0;");
-  writeBlock("Newpos = Y6p + (" + yOutput.format(y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2)) + ") - Yvalue;");
-  writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
-  break;
+    forceXYZ();
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    var yValue = y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
+    writeBlock("Yvalue = " + yValue + ";");
+    writeBlock("Taxyz 2, X6p, Yvalue, Z6p, 1, 0, 0;");
+    writeBlock("Newpos = Y6p + (" + yOutput.format(y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2)) + ") - Yvalue;");
+    writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
+    break;
   case "probing-z":
     forceXYZ();
     var zpos = zOutput.format(Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract));
@@ -1205,18 +1205,18 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-x-wall":
     forceXYZ();
-    var touchPositionX1 = x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
-    var touchPositionX2 = x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionX1 = x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionX2 = x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Xvalue1 = " + xyzFormat.format(touchPositionX1) + ";");
     writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
 
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Xvalue2 = " + xyzFormat.format(touchPositionX2) + ";");
     writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
     //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
@@ -1226,121 +1226,211 @@ function onCyclePoint(x, y, z) {
     writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-  break;
+    break;
   case "probing-y-wall":
     forceXYZ();
-    var touchPositionY1 = y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
-    var touchPositionY2 = y - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY1 = y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY2 = y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Yvalue1 = " + xyzFormat.format(touchPositionY1) + ";");
     writeBlock("Taxyz 2, X6p, Yvalue1, Z6p, 1, 0, 0;");
 
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
     writeBlock("Taxyz 2, X6p, Yvalue2, Z6p, 1, 0, 0;");
 
     writeBlock("Newpos = y6p + " + yOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
     writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");   
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     break;
   case "probing-x-channel":
     forceXYZ();
-    var touchPositionX1 = x + (cycle.width1/2 + cycle.probeOvertravel);
-    var touchPositionX2 = x - (cycle.width1/2 + cycle.probeOvertravel);
-   
+    var touchPositionX1 = x + (cycle.width1 / 2 + cycle.probeOvertravel);
+    var touchPositionX2 = x - (cycle.width1 / 2 + cycle.probeOvertravel);
+
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-//    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-//    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+
     writeBlock("Xvalue1 = " + xyzFormat.format(touchPositionX1) + ";");
     writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
 
-//    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-//    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-//    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Xvalue2 = " + xyzFormat.format(touchPositionX2) + ";");
     writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
-    
+
     //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
     writeBlock("Newpos = x6p + " + xOutput.format(x) + " - (Xvalue1 + Xvalue2) / 2;");
     writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     break;
-  // case "probing-x-channel-with-island":
-    // writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-    // writeBlock(
-      // gFormat.format(65), "P" + 9812,
-      // "X" + xyzFormat.format(cycle.width1),
-      // zOutput.format(z - cycle.depth),
-      // "Q" + xyzFormat.format(cycle.probeOvertravel),
-      // "R" + xyzFormat.format(-cycle.probeClearance),
-      // "S" + probeWorkOffsetCode);
-    // break;
-  case "probing-y-channel":
+  case "probing-x-channel-with-island":
     forceXYZ();
-    var touchPositionY1 = y + (cycle.width1/2 + cycle.probeOvertravel);
-    var touchPositionY2 = y - (cycle.width1/2 + cycle.probeOvertravel);
-   
+
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-//    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-//    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+
+    var touchPositionX1 = xOutput.getCurrent() + cycle.probeClearance + cycle.probeOvertravel;
+    writeBlock("Xvalue1 = " + xyzFormat.format(touchPositionX1) + ";");
+    writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
+
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+
+    var touchPositionX2 = xOutput.getCurrent() - cycle.probeClearance - cycle.probeOvertravel;
+    writeBlock("Xvalue2 = " + xyzFormat.format(touchPositionX2) + ";");
+    writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
+
+    //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
+    writeBlock("Newpos = x6p + " + xOutput.format(x) + " - (Xvalue1 + Xvalue2) / 2;");
+    writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    break;
+  case "probing-y-channel":
+  forceXYZ();
+  var touchPositionY1 = y + (cycle.width1 / 2 + cycle.probeOvertravel);
+  var touchPositionY2 = y - (cycle.width1 / 2 + cycle.probeOvertravel);
+
+  writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+  writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+  writeBlock("Yvalue1 = " + xyzFormat.format(touchPositionY1) + ";");
+  writeBlock("Taxyz 2, x6p, Yvalue1, Z6p, 1, 0, 0;");
+
+  writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
+  writeBlock("Taxyz 2, x6p, Yvalue2, Z6p, 1, 0, 0;");
+
+  writeBlock("Newpos = y6p + " + xOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
+  writeBlock(translate("Setzp") + " x6p, Newpos, Z6p;");
+  writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+  writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+  break;
+  case "probing-y-channel-with-island":
+    forceXYZ();
+
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+
+    var touchPositionY1 = yOutput.getCurrent() + cycle.probeClearance + cycle.probeOvertravel;
     writeBlock("Yvalue1 = " + xyzFormat.format(touchPositionY1) + ";");
     writeBlock("Taxyz 2, x6p, Yvalue1, Z6p, 1, 0, 0;");
 
-//    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-//    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-//    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+
+    var touchPositionY2 = yOutput.getCurrent() - cycle.probeClearance - cycle.probeOvertravel;
     writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
     writeBlock("Taxyz 2, x6p, Yvalue2, Z6p, 1, 0, 0;");
-    
+
     //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
-    writeBlock("Newpos = y6p + " + xOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
+    writeBlock("Newpos = x6p + " + yOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
     writeBlock(translate("Setzp") + " x6p, Newpos, Z6p;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     break;
-/*
-    case "probing-y-channel-with-island":
-      yOutput.reset();
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9812,
-        "Y" + xyzFormat.format(cycle.width1),
-        zOutput.format(z - cycle.depth),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(-cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-xy-circular-boss":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9814,
-        "D" + xyzFormat.format(cycle.width1),
-        "Z" + xyzFormat.format(z - cycle.depth),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        "R" + xyzFormat.format(cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
-    case "probing-xy-circular-hole":
-      writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z - cycle.depth), getFeed(F)); // protected positioning move
-      writeBlock(
-        gFormat.format(65), "P" + 9814,
-        "D" + xyzFormat.format(cycle.width1),
-        "Q" + xyzFormat.format(cycle.probeOvertravel),
-        // not required "R" + xyzFormat.format(cycle.probeClearance),
-        "S" + probeWorkOffsetCode
-      );
-      break;
+  case "probing-xy-circular-boss":
+    /** X positions **/
+    forceXYZ();
+    var touchPositionX1 = x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
+    var touchPositionX2 = x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
+
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Xvalue1 = " + xyzFormat.format(touchPositionX1) + ";");
+    writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
+
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Xvalue2 = " + xyzFormat.format(touchPositionX2) + ";");
+    writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
+    //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
+    writeBlock("Newpos = x6p + " + xOutput.format(x) + " - (Xvalue1 + Xvalue2) / 2;");
+    //writeBlock("String 1, Newpos, 1, 10, 2, 0;")
+    //writeBlock("Melde 1, 0, 1, 0;")
+    writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+
+    /** Y positions **/
+    forceXYZ();
+    var touchPositionY1 = y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY2 = y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Yvalue1 = " + xyzFormat.format(touchPositionY1) + ";");
+    writeBlock("Taxyz 2, X6p, Yvalue1, Z6p, 1, 0, 0;");
+
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
+    writeBlock("Taxyz 2, X6p, Yvalue2, Z6p, 1, 0, 0;");
+
+    writeBlock("Newpos = y6p + " + yOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
+    writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    break;
+
+  case "probing-xy-circular-hole":
+    /** X positions **/
+    forceXYZ();
+    var touchPositionX1 = x + (cycle.width1 / 2 + cycle.probeOvertravel - tool.diameter / 2);
+    var touchPositionX2 = x - (cycle.width1 / 2 + cycle.probeOvertravel - tool.diameter / 2);
+
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    // writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Xvalue1 = " + xyzFormat.format(touchPositionX1) + ";");
+    writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
+
+    // writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    // writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    // writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Xvalue2 = " + xyzFormat.format(touchPositionX2) + ";");
+    writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
+    //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
+    writeBlock("Newpos = x6p + " + xOutput.format(x) + " - (Xvalue1 + Xvalue2) / 2;");
+    writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
+    // writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+
+    /** Y positions **/
+    forceXYZ();
+    var touchPositionY1 = y + (cycle.width1 / 2 + cycle.probeOvertravel - tool.diameter / 2);
+    var touchPositionY2 = y - (cycle.width1 / 2 + cycle.probeOvertravel - tool.diameter / 2);
+
+    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    // writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Yvalue1 = " + xyzFormat.format(touchPositionY1) + ";");
+    writeBlock("Taxyz 2, X6p, Yvalue1, Z6p, 1, 0, 0;");
+
+    // writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    // writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
+    writeBlock("Taxyz 2, X6p, Yvalue2, Z6p, 1, 0, 0;");
+
+    writeBlock("Newpos = y6p + " + yOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
+    writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    break;
+/*      
     case "probing-xy-circular-hole-with-island":
       writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
       writeBlock(
