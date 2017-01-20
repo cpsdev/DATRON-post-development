@@ -1307,7 +1307,7 @@ function onCyclePoint(x, y, z) {
   writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
   writeBlock("Taxyz 2, x6p, Yvalue2, Z6p, 1, 0, 0;");
 
-  writeBlock("Newpos = y6p + " + xOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
+  writeBlock("Newpos = y6p + " + yOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
   writeBlock(translate("Setzp") + " x6p, Newpos, Z6p;");
   writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
   writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1332,7 +1332,7 @@ function onCyclePoint(x, y, z) {
     writeBlock("Taxyz 2, x6p, Yvalue2, Z6p, 1, 0, 0;");
 
     //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
-    writeBlock("Newpos = x6p + " + yOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
+    writeBlock("Newpos = y6p + " + yOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
     writeBlock(translate("Setzp") + " x6p, Newpos, Z6p;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
