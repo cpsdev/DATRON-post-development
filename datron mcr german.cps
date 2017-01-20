@@ -1251,8 +1251,8 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-x-channel":
     forceXYZ();
-    var touchPositionX1 = x + cycle.width1/2 + cycle.probeOvertravel;
-    var touchPositionX2 = x - cycle.width1/2 - cycle.probeOvertravel;
+    var touchPositionX1 = x + (cycle.width1/2 + cycle.probeOvertravel);
+    var touchPositionX2 = x - (cycle.width1/2 + cycle.probeOvertravel);
    
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
@@ -1285,8 +1285,8 @@ function onCyclePoint(x, y, z) {
     // break;
   case "probing-y-channel":
     forceXYZ();
-    var touchPositionY1 = x + cycle.width1/2 + cycle.probeOvertravel;
-    var touchPositionY2 = x - cycle.width1/2 - cycle.probeOvertravel;
+    var touchPositionY1 = y + (cycle.width1/2 + cycle.probeOvertravel);
+    var touchPositionY2 = y - (cycle.width1/2 + cycle.probeOvertravel);
    
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
