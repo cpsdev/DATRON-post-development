@@ -1207,8 +1207,7 @@ function onCyclePoint(x, y, z) {
     forceXYZ();
     var touchPositionX1 = x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
     var touchPositionX2 = x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
-   
-    forceXYZ();
+
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
@@ -1220,40 +1219,19 @@ function onCyclePoint(x, y, z) {
     writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Xvalue2 = " + xyzFormat.format(touchPositionX2) + ";");
     writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
-
-    // writeBlock("Newpos = X6p + (" + xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ") - Xvalue;");
     //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
     writeBlock("Newpos = x6p + " + xOutput.format(x) + " - (Xvalue1 + Xvalue2) / 2;");
     //writeBlock("String 1, Newpos, 1, 10, 2, 0;")
     //writeBlock("Melde 1, 0, 1, 0;")
-
-
     writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-   
-    /*
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
-    var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
-    var ia = ", " + xyzFormat.format(1); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
-    var zhm = ", " + xyzFormat.format(0); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen  alternativ cycle.stock
-    var mz = ", " + xyzFormat.format((z - cycle.depth - cycle.stock) * -1); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
-    var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
-    var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
-    var xvx = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
-    var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
-    var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
-    var yvy = ", " + xyzFormat.format(0); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
-
-    writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
-    */
   break;
   case "probing-y-wall":
     forceXYZ();
     var touchPositionY1 = y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
     var touchPositionY2 = y - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
 
-    forceXYZ();
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
@@ -1266,53 +1244,34 @@ function onCyclePoint(x, y, z) {
     writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
     writeBlock("Taxyz 2, X6p, Yvalue2, Z6p, 1, 0, 0;");
 
-    // writeBlock("Newpos = X6p + (" + xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ") - Xvalue;");
     writeBlock("Newpos = y6p + " + yOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
- 
-    //writeBlock("Newpos = ((Yvalue1 + Yvalue2) / 2);");
-
-    //writeBlock("String 1, Newpos, 1, 10, 2, 0;")
-    //writeBlock("Melde 1, 0, 1, 0;")
-
-
     writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-   
-/*
-    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-
-    var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
-    var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
-    var ia = ", " + xyzFormat.format(1); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
-    var zhm = ", " + xyzFormat.format(0); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
-    var mz = ", " + xyzFormat.format((z - cycle.depth - cycle.stock) * -1); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
-    var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
-    var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
-    var xvx = ", " + xyzFormat.format(0); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
-    var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
-    var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
-    var yvy = ", " + xyzFormat.format((cycle.width1 + (cycle.probeClearance + tool.diameter / 2)) / 2); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
-
-    writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
-    */
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");   
     break;
-
   case "probing-x-channel":
     forceXYZ();
+    var touchPositionX1 = x + cycle.width1/2 + cycle.probeOvertravel;
+    var touchPositionX2 = x - cycle.width1/2 - cycle.probeOvertravel;
+   
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
-    var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
-    var ia = ", " + xyzFormat.format(0); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
-    var zhm = ", " + xyzFormat.format(0); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
-    var mz = ", " + xyzFormat.format((z - cycle.depth - cycle.stock) * -1); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
-    var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
-    var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
-    var xvx = ", " + xyzFormat.format(Math.max(cycle.width1 / 2 - 10,0.1)) ; //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
-    var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
-    var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
-    var yvy = ", " + xyzFormat.format(0); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+//    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+//    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Xvalue1 = " + xyzFormat.format(touchPositionX1) + ";");
+    writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
 
-    writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+//    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+//    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+//    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Xvalue2 = " + xyzFormat.format(touchPositionX2) + ";");
+    writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
+    
+    //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
+    writeBlock("Newpos = x6p + " + xOutput.format(x) + " - (Xvalue1 + Xvalue2) / 2;");
+    writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     break;
   // case "probing-x-channel-with-island":
     // writeBlock(gFormat.format(65), "P" + 9810, zOutput.format(z), getFeed(F)); // protected positioning move
@@ -1326,20 +1285,27 @@ function onCyclePoint(x, y, z) {
     // break;
   case "probing-y-channel":
     forceXYZ();
+    var touchPositionY1 = x + cycle.width1/2 + cycle.probeOvertravel;
+    var touchPositionY2 = x - cycle.width1/2 - cycle.probeOvertravel;
+   
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    var m = xyzFormat.format(7); //Modus  Hoch <0>: XYZ-Sensor hochklappen\nEcke <1>: Ecke links vorne\nEcke <2>: Ecke rechts vorne\nEcke <3>: Ecke rechts hinten\nEcke <4>: Ecke links hinten\nEcke <5>: Ecke mit Sondereingaben\n<6> Mitte Kreis\n<7> Mitte Rechteck\nrunter <9>: XYZ-Sensor herunter klappen
-    var mse = ", " + xyzFormat.format(0); //Mit Meldung "Späne entf." Meldung "Späne entfernen" soll vor der Messung erscheinen?
-    var ia = ", " + xyzFormat.format(0); //Innen / Außen  Innen <0>: Innen messen\nAußen <1>: Außen messen
-    var zhm = ", " + xyzFormat.format(0); //Z-Höhe nach Messung Maschine verfährt nach der Messung auf die eingegebene Höhe über Material\n0 = nicht messen
-    var mz = ", " + xyzFormat.format((z - cycle.depth - cycle.stock) * -1); //Messhub Z Z-Hub für Bewegung zwischen den Messpunkten
-    var zvx = ", " + xyzFormat.format(0); //Z-Messung - Versatz X Z-Messung - Versatz X
-    var zvy = ", " + xyzFormat.format(0); //Z-Messung - Versatz Y Z-Messung - Versatz Y
-    var xvx = ", " + xyzFormat.format(0); //X-Messung - Versatz X X-Messung - Versatz X\n0 = nicht messen
-    var xvy = ", " + xyzFormat.format(0); //X-Messung - Versatz Y X-Messung - Versatz Y
-    var yvx = ", " + xyzFormat.format(0); //Y-Messung - Versatz X Y-Messung - Versatz X
-    var yvy = ", " + xyzFormat.format(Math.max(cycle.width1 / 2 - 10,0.1)); //Y-Messung - Versatz Y Y-Messung - Versatz Y\n0 = nicht messen
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+//    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+//    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.width1/2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Yvalue1 = " + xyzFormat.format(touchPositionY1) + ";");
+    writeBlock("Taxyz 2, x6p, Yvalue1, Z6p, 1, 0, 0;");
 
-    writeBlock("T3d " + m + mse + ia + zhm + mz + zvx + zvy + xvx + xvy + yvx + yvy + ", 0;")
+//    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+//    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+//    writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.width1/2 - (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+    writeBlock("Yvalue2 = " + xyzFormat.format(touchPositionY2) + ";");
+    writeBlock("Taxyz 2, x6p, Yvalue2, Z6p, 1, 0, 0;");
+    
+    //berechnet das delta zur sollposition und nutzt dieses um es mit der aktuellen Position zu verechnen
+    writeBlock("Newpos = y6p + " + xOutput.format(y) + " - (Yvalue1 + Yvalue2) / 2;");
+    writeBlock(translate("Setzp") + " x6p, Newpos, Z6p;");
+    writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     break;
 /*
     case "probing-y-channel-with-island":
