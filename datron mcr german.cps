@@ -346,7 +346,7 @@ function writeProgramHeader() {
     variablesDeclaration.push("Yvalue1");
     variablesDeclaration.push("Yvalue2");
     variablesDeclaration.push("Zvalue");
-    variablesDeclaration.push("Newpos");    
+    variablesDeclaration.push("Newpos");
     variablesDeclaration.push("Rotationvalue");
   }
 
@@ -1656,45 +1656,48 @@ function onCyclePoint(x, y, z) {
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     break;
   case "probing-x-plane-angle":
-
     forceXYZ();
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.probeSpacing / 2) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.probeSpacing / 2) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y + cycle.probeSpacing / 2) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+
     var touchPositionX1 = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
     writeBlock("Xvalue1 = " + touchPositionX1 + ";");
     var touchPositionX2 = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
     writeBlock("Xvalue2 = " + touchPositionX2 + ";");
 
     writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
+    writeBlock(gMotionModal.format(1), "x6p" + ", " + "y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y - cycle.probeSpacing / 2) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y - cycle.probeSpacing / 2) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Taxyz 2, Xvalue2, Y6p, Z6p, 1, 0, 0;");
     writeBlock("Rotationvalue = Arctan ( ( Xvalue2 - Xvalue1 ) / " + "(" + (y + cycle.probeSpacing / 2) + "-" +  (y - cycle.probeSpacing / 2) + ") );");
     writeBlock(translate("Rotation") + " Rotationvalue, 1, 1, 1, 0, 0;");
-
-    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     break;
   case "probing-y-plane-angle":
     forceXYZ();
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.probeSpacing / 2) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    
+    writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.probeSpacing / 2) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(0), xOutput.format(x + cycle.probeSpacing / 2) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+
     var touchPositionY1 = y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
     writeBlock("Yvalue1 = " + touchPositionY1 + ";");
     var touchPositionY2 = y + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
     writeBlock("Yvalue2 = " + touchPositionY2 + ";");
-    
+
     writeBlock("Taxyz 2, X6p, Yvalue1, Z6p, 1, 0, 0;");
+    writeBlock(gMotionModal.format(1), "x6p" + ", " + "y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x - cycle.probeSpacing / 2) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(0), xOutput.format(x - cycle.probeSpacing / 2) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
     writeBlock("Taxyz 2, X6p, Yvalue2, Z6p, 1, 0, 0;");
     writeBlock("Rotationvalue = Arctan ( ( Yvalue2 - Yvalue1 ) / " + "(" + (x + cycle.probeSpacing / 2) + "-" +  (x - cycle.probeSpacing / 2) + ") );");
     writeBlock(translate("Rotation") + " Rotationvalue, 1, 1, 1, 0, 0;");
-    
-    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
+
     writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     break;
   default:
     expandCyclePoint(x, y, z);
@@ -1950,7 +1953,7 @@ function translate(text) {
     case "Zheight":
       return "Zhmess";
     case "Rotation":
-      return "Drehung";      
+      return "Drehung";
     case "\r\n________________________________________" +
          "\r\n|              error                    |" +
          "\r\n|                                       |" +
