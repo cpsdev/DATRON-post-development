@@ -1762,6 +1762,27 @@ function onCycleEnd() {
   if (!cycleExpanded) {
     zOutput.reset();
   }
+
+  var probeWorkOffsetCode;
+  if (isProbeOperation(currentSection)) {
+    var workOffset = probeOutputWorkOffset ? probeOutputWorkOffset : currentWorkOffset;
+    if (workOffset != 0) {
+      if (workOffset >= 19) {
+        error(localize("Work offset is out of range."));
+        return;
+      }
+      probeWorkOffsetCode = workOffset;
+      writeBlock("Position " + probeWorkOffsetCode + ", 3;");
+    }
+  }
+}
+
+var probeOutputWorkOffset = 1;
+
+function onParameter(name, value) {
+  if (name == "probe-output-work-offset") {
+    probeOutputWorkOffset = (value > 0) ? value : 1;
+  }
 }
 
 var pendingRadiusCompensation = -1;
