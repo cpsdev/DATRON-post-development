@@ -1206,8 +1206,8 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-x-wall":
     forceXYZ();
-    var touchPositionX1 = x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
-    var touchPositionX2 = x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionX1 = x + cycle.width1 / 2 + (tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionX2 = x - cycle.width1 / 2 - (tool.diameter / 2 - cycle.probeOvertravel);
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1230,8 +1230,8 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-y-wall":
     forceXYZ();
-    var touchPositionY1 = y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
-    var touchPositionY2 = y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY1 = y + cycle.width1 / 2 + (tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY2 = y - cycle.width1 / 2 - (tool.diameter / 2 - cycle.probeOvertravel);
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1341,8 +1341,8 @@ function onCyclePoint(x, y, z) {
   case "probing-xy-circular-boss":
     /** X positions **/
     forceXYZ();
-    var touchPositionX1 = x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
-    var touchPositionX2 = x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
+    var touchPositionX1 = x + cycle.width1 / 2 + (tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
+    var touchPositionX2 = x - cycle.width1 / 2 - (tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1364,8 +1364,8 @@ function onCyclePoint(x, y, z) {
 
     /** Y positions **/
     forceXYZ();
-    var touchPositionY1 = y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
-    var touchPositionY2 = y - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY1 = y + cycle.width1 / 2 + (tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY2 = y - cycle.width1 / 2 - (tool.diameter / 2 - cycle.probeOvertravel);
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1485,8 +1485,8 @@ function onCyclePoint(x, y, z) {
     //width1 wird X
     //width2 wird Y
     forceXYZ();
-    var touchPositionX1 = x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
-    var touchPositionX2 = x - cycle.width1 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
+    var touchPositionX1 = x + cycle.width1 / 2 + (tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
+    var touchPositionX2 = x - cycle.width1 / 2 - (tool.diameter / 2 - cycle.probeOvertravel); // this might be wrong
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x + cycle.width1 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1508,8 +1508,8 @@ function onCyclePoint(x, y, z) {
 
     /** Y positions **/
     forceXYZ();
-    var touchPositionY1 = y + cycle.width2 / 2 + (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
-    var touchPositionY2 = y - cycle.width2 / 2 - (cycle.probeClearance + tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY1 = y + cycle.width2 / 2 + (tool.diameter / 2 - cycle.probeOvertravel);
+    var touchPositionY2 = y - cycle.width2 / 2 - (tool.diameter / 2 - cycle.probeOvertravel);
 
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y + cycle.width2 / 2 + (cycle.probeClearance + tool.diameter / 2)) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
