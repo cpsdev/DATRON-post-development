@@ -1,5 +1,5 @@
 /**
-  Copyright (C) 2012-2016 by Autodesk, Inc.
+  Copyright (C) 2012-2017 by Autodesk, Inc.
   All rights reserved.
 
   DATRON post processor configuration.
@@ -13,7 +13,7 @@
 description = "DATRON NEO";
 vendor = "DATRON";
 vendorUrl = "http://www.datron.com";
-legal = "Copyright (C) 2012-2016 by Autodesk, Inc.";
+legal = "Copyright (C) 2012-2017 by Autodesk, Inc.";
 certificationLevel = 2;
 minimumRevision = 24000;
 
@@ -1053,7 +1053,7 @@ function onSection() {
             name : feedContext.datronFeedName,
             feed : feedFormat.format(feedContext.feed)
           };
-          //indexOfFeedContext = datronFeedParameter.map(function (e) {return e.name;}).indexOf(datronFeedCommand.name);
+          var indexOfFeedContext = datronFeedParameter.map(function (e) {return e.name;}).indexOf(datronFeedCommand.name);
           if (indexOfFeedContext == -1) {
             datronFeedParameter.push(datronFeedCommand);
           } else {
