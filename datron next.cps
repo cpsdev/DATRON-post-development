@@ -100,8 +100,13 @@ var nowHour = now.getHours();
 var nowMin = now.getMinutes();
 var nowSec = now.getSeconds();
 
-function getSequenceName(section) {
-  return "SEQUENCE_" + mapComment(getOperationDescription(section));
+function getSequenceName(section) { 
+  var sequenceName = "";
+  if (properties.useExternalSequencesFiles){    
+    sequenceName += FileSystem.getFilename(getOutputPath().substr(0, getOutputPath().lastIndexOf("."))) + "_";  
+  }
+  sequenceName += "SEQUENCE_" + mapComment(getOperationDescription(section));
+  return sequenceName;
 }
 
 function getOperationName(section) {
@@ -458,8 +463,8 @@ function writeProgramHeader() {
       sequences.push(getSequenceName(section));
     }
 
-    if (!properties.useExternalSequencesFiles) {
-      writeBlock("@ EmbeddedSequences = true @");
+    if (properties.useExternalSequencesFiles) {
+      writeBlock("@ EmbeddedSequences = false @");
     }
     writeBlock("sequence " + sequences.join("\r\nsequence "));
     writeBlock(" ");
@@ -1245,16 +1250,20 @@ function onSection() {
     writeBlock(currentSectionCall);
 
     // write sequence
-    var currentSectionName = getSequenceName(currentSection);
+    var currentSequenceName = getSequenceName(currentSection);
     if (properties.useExternalSequencesFiles) {
-      sequenceFilePath = FileSystem.replaceExtension(getOutputPath(), "_" + currentSectionName + ".seq");
+      spacingDepth -= 1;
+      var filename = getOutputPath();
+      //sequenceFilePath = filename.substr(0, filename.lastIndexOf(".")) + "_" + currentSequenceName + ".seq";
+      sequenceFilePath = FileSystem.getFolderPath(getOutputPath()) + "\\";
+      sequenceFilePath += currentSequenceName + ".seq"
       redirectToFile(sequenceFilePath);
     } else {
       redirectToBuffer();
       writeBlock(" ");
       // TAG: modify parameter
       spacingDepth -= 1;
-      writeBlock("$$$ " + currentSectionName);
+      writeBlock("$$$ " + currentSequenceName);
     }
   }
 
