@@ -169,46 +169,73 @@ function formatVariable(text) {
 }
 
 function onOpen() {
+	// dump("onOpen", arguments);
+	// if(hasParameter("hostname")){
+	// writeComment(getParameter("hostname"));
+	// }
+	// else{
+	// writeComment("NO hostname");
+	// }
 
-  if (!machineConfiguration.isMachineCoordinate(0)) {
-    aOutput.disable();
-  }
-  if (!machineConfiguration.isMachineCoordinate(1)) {
-    bOutput.disable();
-  }
-  if (!machineConfiguration.isMachineCoordinate(2)) {
-    cOutput.disable();
-  }
+	if (properties.hasRotationAxis) { // note: setup your machine here
+		//Neo with Rotation axis
+		var aAxis = createAxis({
+				coordinate : 0,
+				table : true,
+				axis : [-1, 0, 0],
+				range : [0, 360],
+				cyclic : true,
+				preference : 0
+			});
+		machineConfiguration = new MachineConfiguration(aAxis);
+		machineConfiguration.setVendor("DATRON");
+		machineConfiguration.setModel("NEO with A Axis");
+		machineConfiguration.setDescription("DATRON NEXT Control  with additional A-Axis")
+		setMachineConfiguration(machineConfiguration);
+		optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
+	}
 
-  // header
-  writeProgramHeader();
+	//controls the axis configuration
+	if (!machineConfiguration.isMachineCoordinate(0)) {
+		aOutput.disable();
+	}
+	if (!machineConfiguration.isMachineCoordinate(1)) {
+		bOutput.disable();
+	}
+	if (!machineConfiguration.isMachineCoordinate(2)) {
+		cOutput.disable();
+	}
 
-  // write program calls
-  var numberOfSections = getNumberOfSections();
-  for (var i = 0; i < numberOfSections; ++i) {
-    var section = getSection(i);
-    var opName = getOperationName(section);
-    var sectionID = i + 1;
-    writeBlock(opName);
-  }
-  onCommand(COMMAND_COOLANT_OFF);
-  if (!is3D()) {
-    // writeBlock(translate("Submacro") + " Endmacro;");
-  }
+	// header
+	writeProgramHeader();
 
-  writeBlock("Spindle Off");
+	//write programm calls
+	var numberOfSections = getNumberOfSections();
+	for (var i = 0; i < numberOfSections; ++i) {
+		var section = getSection(i);
+		var opName = getOperationName(section);
+		var sectionID = i + 1;
+		writeBlock(opName);
+	}
 
-  setWorkPlane(new Vector(0, 0, 0)); // reset working plane
-  if (properties.useParkPosition) {
-    writeBlock("MoveToParkPosition");
-  } else {
-    writeBlock("MoveToSafetyPosition");
-    zOutput.reset();
-  }
+	onCommand(COMMAND_COOLANT_OFF);
+	if (!is3D()) {
+		//writeBlock(translate("Submacro") + " Endmacro;");
+	}
 
-  spacingDepth -= 1;
-  writeBlock("endprogram #" + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
-  writeln("");
+	writeBlock("Spindle Off");
+
+	setWorkPlane(new Vector(0, 0, 0)); // reset working plane
+	if (properties.useParkPosition) {
+		writeBlock("MoveToParkPosition");
+	} else {
+		writeBlock("MoveToSafetyPosition");
+		zOutput.reset();
+	}
+
+	spacingDepth -= 1;
+	writeBlock("endprogram #" + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
+	writeln("");
 
 }
 
@@ -570,16 +597,16 @@ function FeedContext(id, description, datronFeedName, feed) {
 
 /** Maps the specified feed value to Q feed or formatted feed. */
 function getFeed(f) {
-  if (activeMovements) {
+  if (activeMovements) {			
     var feedContext = activeMovements[movement];
-    if (feedContext != undefined) {
+    if (feedContext != undefined) {		
       if (!feedFormat.areDifferent(feedContext.feed, f)) {
         if (feedContext.id == currentFeedId) {
           return ""; // nothing has changed
         }
         forceFeed();
         currentFeedId = feedContext.id;
-        if (useDatronFeedCommand) {
+        if (useDatronFeedCommand) {        
           return ("Feed " + capitalizeFirstLetter(feedContext.datronFeedName));
         } else {
           return ("Feed=" + formatVariable(feedContext.description));
@@ -704,6 +731,7 @@ function initializeActiveFeeds(section) {
 
   // this part allows us to use feedContext also for the cycles
   if (hasParameter("operation:cycleType")) {
+
     var cycleType = getParameter("operation:cycleType");
     if (hasParameter("movement:plunge")) {
       var feedContext = new FeedContext(id, localize("Plunge"), "plunge", section.getParameter("movement:plunge"));
@@ -747,6 +775,7 @@ function initializeActiveFeeds(section) {
       }
       break;
     }
+    
   }
 
   if (true) { // high feed
@@ -775,8 +804,8 @@ function forceWorkPlane() {
 
 function setWorkPlane(abc) {
   forceWorkPlane(); // always need the new workPlane
-
   if (!machineConfiguration.isMultiAxisConfiguration()) {
+    writeComment("Machine is not multi Axis support");
     return; // ignore
   }
 
@@ -784,23 +813,29 @@ function setWorkPlane(abc) {
       abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
       abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
       abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
+        
     return; // no change
   }
 
-  // TAG: add multi axis code
-  // gMotionModal.reset();
-  if (!is3D()) {
-    // writeBlock("A_temp = " + (machineConfiguration.isMachineCoordinate(0) ? abcFormat.format(abc.x) : "a6p") + " - A_delta;");
-    // writeBlock("B_temp = " + (machineConfiguration.isMachineCoordinate(1) ? abcFormat.format(abc.y) : "b6p") + " - B_delta;");
-    // writeBlock("C_temp = " + (machineConfiguration.isMachineCoordinate(2) ? abcFormat.format(abc.z) : "c6p") + " - C_delta;");
-    // writeBlock("Axyzabc 1, x6p, y6p, z6p, A_temp, B_temp, C_temp;");
-  }
+  // //TODO Befehl anpasssen
+  //gMotionModal.reset();
+  // if (!is3D()) {
+  // // writeBlock("A_temp = " + (machineConfiguration.isMachineCoordinate(0) ? abcFormat.format(abc.x) : "a6p") + " - A_delta;");
+  // // writeBlock("B_temp = " + (machineConfiguration.isMachineCoordinate(1) ? abcFormat.format(abc.y) : "b6p") + " - B_delta;");
+  // // writeBlock("C_temp = " + (machineConfiguration.isMachineCoordinate(2) ? abcFormat.format(abc.z) : "c6p") + " - C_delta;");
+  // // writeBlock("Axyzabc 1, x6p, y6p, z6p, A_temp, B_temp, C_temp;");
+  // }
 
-  if (!is3D() && !currentSection.isMultiAxis()) {
-    // writeBlock(translate("Submacro") + " Transformoffset 0, ",
-    // abcFormat.format(abc.x) +", ",
-    // abcFormat.format(abc.y) +", ",
-    // abcFormat.format(abc.z) +";");
+  if (!is3D()) {
+  var xyzabc = aOutput.format(abc.x) +
+      bOutput.format(abc.y) +
+      cOutput.format(abc.z);
+      
+    writeBlock("SafeRapid" + xyzabc);
+  // writeBlock(translate("Submacro") + " Transformoffset 0, ",
+  // abcFormat.format(abc.x) +", ",
+  // abcFormat.format(abc.y) +", ",
+  // abcFormat.format(abc.z) +";");
   }
 
   currentWorkPlaneABC = abc;
@@ -859,6 +894,7 @@ function getWorkPlaneMachineABC(workPlane) {
   return abc;
 }
 
+var isInsideSection = false;
 
 function onSection() {
   if (isProbeOperation(currentSection)) {
@@ -1039,13 +1075,11 @@ function onSection() {
         " skipRestoring");
     }
 
-
     // set the current feed
     // replace by the default feed command
-    if (properties.useParametricFeed) {
-      activeFeeds = initializeActiveFeeds(section);
-      if (useDatronFeedCommand) {
-/*
+    if (properties.useParametricFeed && !hasParameter("operation:cycleType")) {
+      activeFeeds = initializeActiveFeeds(section);		
+      if (useDatronFeedCommand  ) {
         var datronFeedParameter = new Array();
         for (var j = 0; j < activeFeeds.length; ++j) {
           var feedContext = activeFeeds[j];
@@ -1068,7 +1102,7 @@ function onSection() {
           datronFeedCommand += " " + datronFeedParameter[i].name + "=" + datronFeedParameter[i].feed;
         }
         writeBlock(datronFeedCommand);
-*/
+
       } else {
         for (var j = 0; j < activeFeeds.length; ++j) {
           var feedContext = activeFeeds[j];
@@ -1090,6 +1124,9 @@ function onSection() {
 
     switch (cycleType) {
     case "thread-milling":
+			writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " ramp=" + section.getParameter('movement:ramp') + " finishing=" + section.getParameter('movement:finish_cutting'));
+	
+		
       var diameter = section.getParameter("diameter");
       var clearance = section.getParameter("clearance");
       var retract = section.getParameter("retract");
@@ -1130,7 +1167,9 @@ function onSection() {
       // writeBlock("repeatPass = " + dimensionFormat.format(section.getParameter("repeatPass")));
       // sequenceParamter.push("repeatPass=repeatPass");
       break;
-    case "bore-milling":
+    case "bore-milling":		
+			writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " ramp=" + section.getParameter('movement:ramp') + " finishing=" + section.getParameter('movement:finish_cutting'));
+			
       writeBlock("diameter = " + dimensionFormat.format(section.getParameter("diameter")));
       sequenceParamter.push("diameter=diameter");
 
@@ -1153,12 +1192,49 @@ function onSection() {
       sequenceParamter.push("repeatPass=repeatPass");
       break;
 
+    case "drilling":		
+      writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " ramp=" + section.getParameter('movement:ramp') + " finishing=" + section.getParameter('movement:finish_cutting'));
+
+      var clearance = section.getParameter("clearance");
+      var retract = section.getParameter("retract");
+      var stock = section.getParameter("stock");
+
+      var fastzplunge = clearance - retract;
+      writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+
+      var slowzplunge = retract - stock;
+      writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
+      sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
+      
+      break;
+    
+  case "chip-breaking":
+      writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " ramp=" + section.getParameter('movement:ramp') + " finishing=" + section.getParameter('movement:finish_cutting'));
+
+      var clearance = section.getParameter("clearance");
+      var retract = section.getParameter("retract");
+      var stock = section.getParameter("stock");
+
+      var fastzplunge = clearance - retract;
+      writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+
+      var slowzplunge = retract - stock;
+      writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
+      sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
+
+      writeBlock("infeedZ = " + dimensionFormat.format(section.getParameter("incrementalDepth")));
+      sequenceParamter.push("infeedZ=infeedZ");
+   
+      break;
     }
+
   }
 
   if (properties.useSequences) {
     // call sequence
-    if (properties.useParametricFeed && (!useDatronFeedCommand)) {
+    if (properties.useParametricFeed && (!useDatronFeedCommand) && !hasParameter("operation:cycleType")) {
       activeFeeds = initializeActiveFeeds(section);
       for (var j = 0; j < activeFeeds.length; ++j) {
         var feedContext = activeFeeds[j];
@@ -1322,18 +1398,89 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
     // TAG: are 360deg arcs supported
     switch (getCircularPlane()) {
     case PLANE_XY:
-      writeBlock("Arc" + (clockwise ? " CW" : " CCW") + xOutput.format(x) + yOutput.format(y) + iOutput.format(cx - start.x) + jOutput.format(cy - start.y));
+      writeBlock("Arc" +
+        (clockwise ? " CW" : " CCW") +
+        xOutput.format(x) +
+        iOutput.format(cx - start.x) +
+        jOutput.format(cy - start.y))
       break;
+      // case PLANE_ZX:
+      // writeBlock(gPlaneModal.format(18), gMotionModal.format(clockwise ? 2 : 3), zOutput.format(z), iOutput.format(cx - start.x, 0), kOutput.format(cz - start.z, 0), feedOutput.format(feed));
+      // break;
+      // case PLANE_YZ:
+      // writeBlock(gPlaneModal.format(19), gMotionModal.format(clockwise ? 2 : 3), yOutput.format(y), jOutput.format(cy - start.y, 0), kOutput.format(cz - start.z, 0), feedOutput.format(feed));
+      // break;
     default:
       linearize(tolerance);
     }
   } else {
     switch (getCircularPlane()) {
     case PLANE_XY:
-      writeBlock("Arc" + (clockwise ? " CW" : " CCW") + xOutput.format(x) + yOutput.format(y) + zOutput.format(z) + iOutput.format(cx - start.x) + jOutput.format(cy - start.y));
+      writeBlock("Arc" +
+        (clockwise ? " CW" : " CCW") +
+        xOutput.format(x) +
+        yOutput.format(y) +
+        zOutput.format(z) +
+        iOutput.format(cx - start.x) +
+        jOutput.format(cy - start.y))
       break;
+      // case PLANE_ZX:
+      // writeBlock(gPlaneModal.format(18), gMotionModal.format(clockwise ? 2 : 3), xOutput.format(x), yOutput.format(y), zOutput.format(z), iOutput.format(cx - start.x, 0), kOutput.format(cz - start.z, 0), feedOutput.format(feed));
+      // break;
+      // case PLANE_YZ:
+      // writeBlock(gPlaneModal.format(19), gMotionModal.format(clockwise ? 2 : 3), xOutput.format(x), yOutput.format(y), zOutput.format(z), jOutput.format(cy - start.y, 0), kOutput.format(cz - start.z, 0), feedOutput.format(feed));
+      // break;
     default:
       linearize(tolerance);
+    }
+  }
+}
+
+function onRapid5D(_x, _y, _z, _a, _b, _c) {
+  if (pendingRadiusCompensation >= 0) {
+    error(localize("Radius compensation mode cannot be changed at rapid traversal."));
+    return;
+  }
+  var x = xOutput.format(_x);
+  var y = yOutput.format(_y);
+  var z = zOutput.format(_z);
+
+  var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "");
+  var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(_b) : "");
+  var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(_c) : "");
+
+  //if (currentSection.isOptimizedForMachine()) {
+  forceABC;
+  var xyzabc = x + y + z + a + b + c;
+  writeBlock("Rapid" + xyzabc);
+  //}
+  forceFeed();
+}
+
+function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
+  if (pendingRadiusCompensation >= 0) {
+    error(localize("Radius compensation cannot be activated/deactivated for 5-axis move."));
+    return;
+  }
+
+  var f = getFeed(feed);
+  writeBlock(getFeed(feed));
+
+  if (_x || _y || _z || _a || _b || _c) {
+    var xyzabc = xOutput.format(_x) +
+      yOutput.format(_y) +
+      zOutput.format(_z) +
+      aOutput.format(_a) +
+      bOutput.format(_b) +
+      cOutput.format(_c);
+    writeBlock("Line" + xyzabc);
+
+  } else if (f) {
+    if (getNextRecord().isMotion()) { // try not to output feed without motion
+      forceFeed(); // force feed on next line
+    } else {
+      //TODO
+      //writeBlock(gMotionModal.format(0), f);
     }
   }
 }
@@ -1460,8 +1607,16 @@ function onCommand(command) {
 }
 
 function onCycle() {
-  // writeBlock(gPlaneModal.format(17));
+  // writeBlock(gPlaneModal.format(17));	
+	useDatronFeedCommand=true
 }
+
+
+function onCycleEnd() {
+  // writeBlock(gPlaneModal.format(17));	
+	useDatronFeedCommand=false
+}
+
 
 function getCommonCycle(x, y, z, r) {
   forceXYZ(); // force xyz on first drill hole of any cycle
@@ -1497,6 +1652,16 @@ function onCyclePoint(x, y, z) {
     onRapid(x, y, cycle.clearance);
     threadMilling(cycle);
     break;
+	case "drilling":
+		forceXYZ();
+    onRapid(x, y, cycle.clearance);
+    drilling(cycle);
+		break;
+	case "chip-breaking":
+		forceXYZ();
+    onRapid(x, y, cycle.clearance);
+    chip_breaking(cycle);
+		break;
   case "probing-x":
     forceXYZ();
     writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
@@ -1536,6 +1701,39 @@ function onCyclePoint(x, y, z) {
   }
   return;
 }
+
+
+function drilling(cycle) {
+ 
+  var boreCommandString = new Array();
+  boreCommandString.push("Drill");
+ 
+  var depth = xyzFormat.format(cycle.depth);
+  boreCommandString.push("depth=" + depth);
+
+  boreCommandString.push("strokeRapidZ=strokeRapidZ");
+  boreCommandString.push("strokeCuttingZ=strokeCuttingZ");  
+
+  writeBlock(boreCommandString.join(" "));
+}
+
+
+function chip_breaking(cycle) {
+ 
+  var boreCommandString = new Array();
+  boreCommandString.push("Drill");
+
+  var depth = xyzFormat.format(cycle.depth);
+  boreCommandString.push("depth=" + depth);
+
+  boreCommandString.push("strokeRapidZ=strokeRapidZ");
+  boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
+  boreCommandString.push("infeedZ=infeedZ");
+ 
+  writeBlock(boreCommandString.join(" "));
+}
+
+
 
 function boreMilling(cycle) {
   if (cycle.numberofsteps > 2) {
