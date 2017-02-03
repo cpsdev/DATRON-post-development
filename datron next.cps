@@ -1124,7 +1124,7 @@ function onSection() {
 
     switch (cycleType) {
     case "thread-milling":
-			writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " ramp=" + section.getParameter('movement:ramp') + " finishing=" + section.getParameter('movement:finish_cutting'));
+			writeBlock("SetFeedTechnology" + " ramp=" + section.getParameter('movement:cutting') + " finishing=" + section.getParameter('movement:finish_cutting'));
 	
 		
       var diameter = section.getParameter("diameter");
@@ -1168,7 +1168,7 @@ function onSection() {
       // sequenceParamter.push("repeatPass=repeatPass");
       break;
     case "bore-milling":		
-			writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " ramp=" + section.getParameter('movement:ramp') + " finishing=" + section.getParameter('movement:finish_cutting'));
+			writeBlock("SetFeedTechnology roughing=" + section.getParameter('movement:cutting') + " finishing=" + section.getParameter('movement:cutting'));
 			
       writeBlock("diameter = " + dimensionFormat.format(section.getParameter("diameter")));
       sequenceParamter.push("diameter=diameter");
@@ -1193,8 +1193,8 @@ function onSection() {
       break;
 
     case "drilling":		
-      writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " ramp=" + section.getParameter('movement:ramp') + " finishing=" + section.getParameter('movement:finish_cutting'));
-
+      writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge'));
+  
       var clearance = section.getParameter("clearance");
       var retract = section.getParameter("retract");
       var stock = section.getParameter("stock");
@@ -1210,7 +1210,7 @@ function onSection() {
       break;
     
   case "chip-breaking":
-      writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " ramp=" + section.getParameter('movement:ramp') + " finishing=" + section.getParameter('movement:finish_cutting'));
+      writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " roughing=" + section.getParameter('movement:cutting'));
 
       var clearance = section.getParameter("clearance");
       var retract = section.getParameter("retract");
