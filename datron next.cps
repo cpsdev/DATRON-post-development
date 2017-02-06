@@ -933,7 +933,10 @@ function onSection() {
 
   if (passThrough) {
     var joinString = "\r\n" + getSpacing();
-    writeBlock(passThrough.join(joinString));
+    var passThroughString = passThrough.join(joinString);
+    if (passThroughString != ""){
+      writeBlock(passThroughString);
+    }  
     passThrough = [];
   }
 
