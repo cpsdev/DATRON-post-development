@@ -941,7 +941,7 @@ function onSection() {
   }
 
   // this control structure allows us to show the user the operation from the CAM application as a block of within the whole program similarly to Heidenhain structure.
-  writeBlock("BeginBlock name=" + "\"" + getOperationName(currentSection) + "\"");
+  writeBlock("BeginBlock name=" + "\"" + getOperationDescription(currentSection) + "\"");
 
   if (properties.waitAfterOperation) {
     showWaitDialog();
