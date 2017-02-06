@@ -286,7 +286,7 @@ function writeToolTable() {
     for (var i = 0; i < tools.getNumberOfTools(); ++i) {
       var tool = tools.getTool(i);
 
-      if (properties.writeToolTable) {
+      if ((properties.writeToolTable) && (tool.type != TOOL_PROBE)) {
         var toolProgrammed = "@ ToolDescription : " +
           "\"" + "Name" + "\"" + ":" +  "\"" + createToolName(tool) + "\"" + ", " +
           "\"" + "Category" + "\"" + ":" +  "\"" + translateToolType(tool.type) + "\"" + ", " +
