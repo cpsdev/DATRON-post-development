@@ -904,8 +904,8 @@ var isInsideSection = false;
 function onSection() {
   if (isProbeOperation(currentSection)) {
     // TAG: remove once probing is supported properly, waiting for Datron
-    error(localize("Probing is not supported for now."));
-    return;
+  //  error(localize("Probing is not supported for now."));
+   // return;
   }
 
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
@@ -1115,10 +1115,7 @@ function onSection() {
         }
       }
     }
-  } else {
-    // probing
-    writeBlock("PrepareXyzSensor");
-  }
+  } 
 
   // parameter for the sequences
   var sequenceParamter = new Array();
@@ -1295,6 +1292,9 @@ function onSection() {
 */
       writeBlock("Dynamic = " + 5);
     }
+  } else {    
+    writeBlock("Spindle Off");
+    writeBlock("PrepareXyzSensor");
   }
 
   // move to initial Position (this command move the Z Axis to safe high and repositioning in safe high after that drive Z to end position)
