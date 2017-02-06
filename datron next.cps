@@ -1693,7 +1693,7 @@ function onCyclePoint(x, y, z) {
     writeBlock("Line Z=" + xyzFormat.format(z - cycle.depth + tool.cornerRadius));
 
     var measureString = "EdgeMeasure ";
-    measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
+    measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
     measureString += " originShift=" + xyzFormat.format(-1 * (y + approach(cycle.approach1) * startPositionOffset));
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
     writeBlock(measureString);
