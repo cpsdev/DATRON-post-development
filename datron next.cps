@@ -1831,8 +1831,6 @@ function dump(name, _arguments) {
 }
 
 function onSectionEnd() {
-
-  writeBlock("MoveToSafetyPosition");
   writeBlock("ToolCompensation Off");
 
   if (properties.useSequences) {
