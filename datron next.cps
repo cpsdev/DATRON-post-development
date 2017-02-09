@@ -280,39 +280,61 @@ function createToolVariables() {
   }
 }
 
-function createToolTable() {
+function createToolDescriptionTable() {
   if (!properties.writeToolTable) {return};
   var toolDescriptionArray = new Array();
+  var toolNameList = new Array();
   var numberOfSections = getNumberOfSections();
   for (var i = 0; i < numberOfSections; ++i) {
 		var section = getSection(i);
     var tool = section.getTool();  
     
     if (tool.type != TOOL_PROBE) {
-      var toolProgrammed = "@ ToolDescription : " +
-        "\"" + "Name" + "\"" + ":" +  "\"" + createToolName(tool) + "\"" + ", " +
-        "\"" + "Category" + "\"" + ":" +  "\"" + translateToolType(tool.type) + "\"" + ", " +
-        "\"" + "ArticleNr" + "\"" + ":" +  "\"" + tool.productId + "\"" + ", " +
-        "\"" + "ToolNumber" + "\"" + ":" + toolFormat.format(tool.number) + ", " +
-        "\"" + "Vendor" + "\"" + ":" +  "\"" + tool.vendor + "\"" + ", " +
-        "\"" + "Diameter" + "\"" + ":" + dimensionFormat.format(tool.diameter) + ", " +
-        "\"" + "TipAngle" + "\"" + ":" + dimensionFormat.format(toDeg(tool.taperAngle)) + ", " +
-        "\"" + "TipDiameter" + "\"" + ":" + dimensionFormat.format(tool.tipDiameter) + ", " +
-        "\"" + "FluteLength" + "\"" + ":" + dimensionFormat.format(tool.fluteLength) + ", " +
-        "\"" + "CornerRadius" + "\"" + ":" + dimensionFormat.format(tool.cornerRadius) + ", " +
-        "\"" + "ShoulderLength" + "\"" + ":" + dimensionFormat.format(tool.shoulderLength) + ", " +
-        "\"" + "ShoulderDiameter" + "\"" + ":" + dimensionFormat.format(tool.diameter) + ", " +
-        "\"" + "BodyLength" + "\"" + ":" + dimensionFormat.format(tool.bodyLength) + ", " +
-        "\"" + "NumberOfFlutes" + "\"" + ":" + toolFormat.format(tool.numberOfFlutes) + ", " +
-        "\"" + "ThreadPitch" + "\"" + ":" + dimensionFormat.format(tool.threadPitch) + ", " +
-        "\"" + "ShaftDiameter" + "\"" + ":" + dimensionFormat.format(tool.shaftDiameter) + ", " +
-        "\"" + "OverallLength" + "\"" + ":" + dimensionFormat.format(tool.bodyLength + 2 * tool.shaftDiameter) +
-        " @";
-      
-      toolDescriptionArray.indexOf(toolProgrammed) == -1 ? toolDescriptionArray.push(toolProgrammed):function(){};      
+    
+      var toolName = createToolName(tool);      
+      var toolProgrammed = createToolDescription(tool);    
+      if (toolNameList.indexOf(toolName)==-1){
+        toolNameList.push(toolName);      
+        toolDescriptionArray.push(toolProgrammed)        
+      }
+      else
+      { 
+         if(toolDescriptionArray.indexOf(toolProgrammed)==-1){
+          error("\r\n#####################################\r\nOne ore more Tools have the same Name!\r\nPlease change the tool number to make the Name unique.\r\n#####################################");
+         }
+      }
     }   
-  }
+  }  
+ 
   writeBlock(toolDescriptionArray.join("\r\n"));
+}
+
+
+function onlyUnique(value, index, self) { 
+    return self.indexOf(value) === index;
+}
+
+function createToolDescription(tool){
+  var toolProgrammed = "@ ToolDescription : " +
+      "\"" + "Name" + "\"" + ":" +  "\"" + createToolName(tool) + "\"" + ", " +
+      "\"" + "Category" + "\"" + ":" +  "\"" + translateToolType(tool.type) + "\"" + ", " +
+      "\"" + "ArticleNr" + "\"" + ":" +  "\"" + tool.productId + "\"" + ", " +
+      "\"" + "ToolNumber" + "\"" + ":" + toolFormat.format(tool.number) + ", " +
+      "\"" + "Vendor" + "\"" + ":" +  "\"" + tool.vendor + "\"" + ", " +
+      "\"" + "Diameter" + "\"" + ":" + dimensionFormat.format(tool.diameter) + ", " +
+      "\"" + "TipAngle" + "\"" + ":" + dimensionFormat.format(toDeg(tool.taperAngle)) + ", " +
+      "\"" + "TipDiameter" + "\"" + ":" + dimensionFormat.format(tool.tipDiameter) + ", " +
+      "\"" + "FluteLength" + "\"" + ":" + dimensionFormat.format(tool.fluteLength) + ", " +
+      "\"" + "CornerRadius" + "\"" + ":" + dimensionFormat.format(tool.cornerRadius) + ", " +
+      "\"" + "ShoulderLength" + "\"" + ":" + dimensionFormat.format(tool.shoulderLength) + ", " +
+      "\"" + "ShoulderDiameter" + "\"" + ":" + dimensionFormat.format(tool.diameter) + ", " +
+      "\"" + "BodyLength" + "\"" + ":" + dimensionFormat.format(tool.bodyLength) + ", " +
+      "\"" + "NumberOfFlutes" + "\"" + ":" + toolFormat.format(tool.numberOfFlutes) + ", " +
+      "\"" + "ThreadPitch" + "\"" + ":" + dimensionFormat.format(tool.threadPitch) + ", " +
+      "\"" + "ShaftDiameter" + "\"" + ":" + dimensionFormat.format(tool.shaftDiameter) + ", " +
+      "\"" + "OverallLength" + "\"" + ":" + dimensionFormat.format(tool.bodyLength + 2 * tool.shaftDiameter) +
+      " @";
+  return toolProgrammed;
 }
 
 /**
@@ -323,11 +345,15 @@ function createToolName(tool) {
   toolName += "_" + translateToolType(tool.type);
   if (tool.comment) {
     toolName += "_" + tool.comment;
-  }
+  } 
+  if (tool.tipDiameter){
+    toolName += "_D" + tool.tipDiameter;
+  } 
   var description = tool.getDescription();
   if (description) {
     toolName += "_" + description;
   }
+  
   return toolName;
 }
 
@@ -452,7 +478,7 @@ function writeProgramHeader() {
   writeBlock("@ MeasuringSystem = " + (unit == MM ? "\"" + "Metric" + "\"" + " @" : "\"" + "Imperial" + "\"" + " @"));
 
   // write the table of used tools in the header of the program
-  createToolTable();
+  createToolDescriptionTable();
   writeBlock("");
 
   writeWorkpiece();
