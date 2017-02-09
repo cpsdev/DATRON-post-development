@@ -280,7 +280,7 @@ function writeToolVariables() {
   }
 }
 
-function writeToolTable() {
+function createToolTable() {
   var tools = getToolTable();
   if (tools.getNumberOfTools() > 0) {
     for (var i = 0; i < tools.getNumberOfTools(); ++i) {
@@ -449,7 +449,7 @@ function writeProgramHeader() {
   writeBlock("@ MeasuringSystem = " + (unit == MM ? "\"" + "Metric" + "\"" + " @" : "\"" + "Imperial" + "\"" + " @"));
 
   // write the table of used tools in the header of the program
-  writeToolTable();
+  createToolTable();
   writeBlock("");
 
   writeWorkpiece();
