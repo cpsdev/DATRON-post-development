@@ -349,7 +349,7 @@ function createToolName(tool) {
   if (description) {
     toolName += "_" + description;
   }
-  
+  toolName = formatVariable(toolName);
   return toolName;
 }
 
@@ -1176,8 +1176,8 @@ function onSection() {
 
 
       var fastzplunge = clearance - retract;
-      writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
-      sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      //writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      //sequenceParamter.push("strokeRapidZ=strokeRapidZ");
 
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
@@ -1208,8 +1208,8 @@ function onSection() {
       var stock = section.getParameter("stock");
 
       var fastzplunge = clearance - retract;
-      writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
-      sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
 
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
@@ -1230,8 +1230,8 @@ function onSection() {
       var stock = section.getParameter("stock");
 
       var fastzplunge = clearance - retract;
-      writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
-      sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
 
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
@@ -1247,8 +1247,8 @@ function onSection() {
       var stock = section.getParameter("stock");
 
       var fastzplunge = clearance - retract;
-      writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
-      sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
 
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
@@ -1367,8 +1367,12 @@ function onRadiusCompensation() {
   pendingRadiusCompensation = radiusCompensation;
 }
 
-function onRapid(x, y, z) {
-  var xyz = xOutput.format(x) + yOutput.format(y) + zOutput.format(z);
+function onRapid(x, y, z) {  
+  var xyz = "";
+  xyz += x ? xOutput.format(x) : "";
+  xyz += y ? yOutput.format(y) : "";
+  xyz += z ? zOutput.format(z) : "";
+ 
   if (xyz) {
     if (pendingRadiusCompensation >= 0) {
       error(localize("Radius compensation mode cannot be changed at rapid traversal."));
@@ -1378,6 +1382,19 @@ function onRapid(x, y, z) {
     forceFeed();
   }
 }
+
+function onPrePositioning(x, y, z) {
+  var xyz = xOutput.format(x) + yOutput.format(y) + zOutput.format(z);
+  if (xyz) {
+    if (pendingRadiusCompensation >= 0) {
+      error(localize("Radius compensation mode cannot be changed at rapid traversal."));
+      return;
+    }
+    writeBlock("PrePositioning" + xyz);
+    forceFeed();
+  }
+}
+
 
 function onLinear(x, y, z, feed) {
   var xyz = xOutput.format(x) + yOutput.format(y) + zOutput.format(z);
@@ -1646,6 +1663,7 @@ function onCommand(command) {
 function onCycle() {
   // writeBlock(gPlaneModal.format(17));	
 	useDatronFeedCommand=true
+  writeBlock
 }
 
 
@@ -1678,27 +1696,35 @@ function onCyclePoint(x, y, z) {
 
   switch (cycleType) {
   case "bore-milling":
-    forceXYZ();
-    onRapid(x, y, cycle.clearance);
+    forceXYZ();   
+    onRapid(x,y,null);
+    onRapid(x,y,cycle.retract);
     boreMilling(cycle);
+    onRapid(x, y, cycle.clearance);
     break;
   case "thread-milling":
     // expandCyclePoint(x, y, z);
     // break;
-    forceXYZ();
-    onRapid(x, y, cycle.clearance);
+    forceXYZ();   
+    onRapid(x,y,null);
+    onRapid(x,y,cycle.retract);
     threadMilling(cycle);
+    onRapid(x, y, cycle.clearance);
     break;
 	case "drilling":
-		forceXYZ();
-    onRapid(x, y, cycle.clearance);
+		forceXYZ();    
+    onRapid(x,y,null);
+    onRapid(x,y,cycle.retract);    
     drilling(cycle);
-		break;
+		onRapid(x, y, cycle.clearance);
+    break;
 	case "chip-breaking":
 		forceXYZ();
-    onRapid(x, y, cycle.clearance);
+    onRapid(x,y,null);
+    onRapid(x,y,cycle.retract);   
     chip_breaking(cycle);
-		break;
+		onRapid(x, y, cycle.clearance);
+    break;
   case "probing-x":
     forceXYZ();
     writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
@@ -1748,7 +1774,7 @@ function drilling(cycle) {
   var depth = xyzFormat.format(cycle.depth);
   boreCommandString.push("depth=" + depth);
 
-  boreCommandString.push("strokeRapidZ=strokeRapidZ");
+  //boreCommandString.push("strokeRapidZ=strokeRapidZ");
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");  
 
   writeBlock(boreCommandString.join(" "));
@@ -1763,7 +1789,7 @@ function chip_breaking(cycle) {
   var depth = xyzFormat.format(cycle.depth);
   boreCommandString.push("depth=" + depth);
 
-  boreCommandString.push("strokeRapidZ=strokeRapidZ");
+  //boreCommandString.push("strokeRapidZ=strokeRapidZ");
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
  
@@ -1784,7 +1810,7 @@ function boreMilling(cycle) {
   var depth = xyzFormat.format(cycle.depth);
   boreCommandString.push("depth=" + depth);
 
-  boreCommandString.push("strokeRapidZ=strokeRapidZ");
+  //boreCommandString.push("strokeRapidZ=strokeRapidZ");
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
 
@@ -1812,7 +1838,7 @@ function threadMilling(cycle) {
 
   var depth = xyzFormat.format(cycle.depth);
   threadString.push("depth=" + depth);
-  threadString.push("strokeRapidZ=strokeRapidZ");
+  //threadString.push("strokeRapidZ=strokeRapidZ");
   threadString.push("strokeCuttingZ=strokeCuttingZ");
 
   // threadString.push("threadStandard=threadStandard");
