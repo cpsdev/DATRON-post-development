@@ -300,18 +300,14 @@ function createToolDescriptionTable() {
       else
       { 
          if(toolDescriptionArray.indexOf(toolProgrammed)==-1){
-          error("\r\n#####################################\r\nOne ore more Tools have the same Name!\r\nPlease change the tool number to make the Name unique.\r\n#####################################");
+          error("\r\n#####################################\r\nOne ore more tools have the same name!\r\nPlease change the tool number to make the name unique.\r\n" + toolDescriptionArray.join("\r\n") + "\r\n\r\n" +
+          toolNameList.join("\r\n") + "#####################################\r\n");
          }
       }
     }   
   }  
  
   writeBlock(toolDescriptionArray.join("\r\n"));
-}
-
-
-function onlyUnique(value, index, self) { 
-    return self.indexOf(value) === index;
 }
 
 function createToolDescription(tool){
@@ -346,8 +342,8 @@ function createToolName(tool) {
   if (tool.comment) {
     toolName += "_" + tool.comment;
   } 
-  if (tool.tipDiameter){
-    toolName += "_D" + tool.tipDiameter;
+  if (tool.diameter){
+    toolName += "_D" + tool.diameter;
   } 
   var description = tool.getDescription();
   if (description) {
