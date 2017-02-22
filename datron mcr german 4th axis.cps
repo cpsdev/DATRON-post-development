@@ -138,10 +138,9 @@ function writeComment(text) {
 
 function onOpen() {
 
-  if (false) { // note: setup your machine here
-    var aAxis = createAxis({coordinate:0, table:true, axis:[-1, 0, 0], range:[-102.5, 0], preference:-1});
-    var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, -1], range:[-360, 360], cyclic:true, preference:0});
-    machineConfiguration = new MachineConfiguration(aAxis, cAxis);
+  if (true) { // note: setup your machine here
+    var aAxis = createAxis({coordinate:0, table:true, axis:[-1, 0, 0], range:[-360, 360], cyclic:true});
+     machineConfiguration = new MachineConfiguration(aAxis);
 
     setMachineConfiguration(machineConfiguration);
     optimizeMachineAngles2(1); // TCP mode
@@ -552,10 +551,6 @@ function onComment(message) {
   for (comment in comments) {
     writeComment(comments[comment]);
   }
-}
-
-function onPassThrough(message){
-  writeBlock(message);
 }
 
 /** Force output of X, Y, and Z. */
