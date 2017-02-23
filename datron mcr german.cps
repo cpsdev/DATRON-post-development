@@ -554,10 +554,6 @@ function onComment(message) {
   }
 }
 
-function onPassThrough(message){
-  writeBlock(message);
-}
-
 /** Force output of X, Y, and Z. */
 function forceXYZ() {
   xOutput.reset();

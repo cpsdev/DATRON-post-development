@@ -137,7 +137,7 @@ var zOutput = createVariable({
 		prefix : " Z="
 	}, xyzFormat);
 var aOutput = createVariable({
-		prefix : " A="
+		prefix : " A=AOffset+"
 	}, angleFormat);
 var bOutput = createVariable({
 		prefix : " B="
@@ -638,12 +638,19 @@ function writeProgramHeader() {
 
 	writeToolVariables();
 
+	//TODO löschen wenn geht
+	writeComment("HIer kannst du einen Wert eintragen den du als Offste nehmen willst. Ist manchmal robuster als die Automatische Übenrhame der aktuellen Achsposition")
+	writeBlock("AOffset=0");
+	
 	writeBlock("export program Main # " + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
 	spacingDepth += 1;
 
 	writeBlock("Absolute");
 	
-	
+	//TODO löschen 
+	writeComment("Diesen Befehl auskommentieren wenn du willst das er die aktuelle Lage der A Achse als Nullage übernimmt");
+	writeBlock("#AOffset = AxisSystem::GetRcsPosition.A");
+
 	//write the paramtetric tool table
 	if (!properties.writeToolTable) {
 		var tools = getToolTable();
@@ -1136,7 +1143,7 @@ function onSection() {
 
 	if (machineConfiguration.isMultiAxisConfiguration()) { // use 5-axis indexing for multi-axis mode
 		// set working plane after datum shift
-
+writeComment("Es ist eine Mehrachs ");
 		if (currentSection.isMultiAxis()) {
 			forceWorkPlane();
 			cancelTransformation();
@@ -1148,9 +1155,10 @@ function onSection() {
 			cancelTransformation();
 		
 			var abc = new Vector(0, 0, 0);
-			abc = getWorkPlaneMachineABC(currentSection.workPlane);
+			var abc = getWorkPlaneMachineABC(currentSection.workPlane);
+			
+			
 			setWorkPlane(abc);
-
 		}
 	} else {
 
