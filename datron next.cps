@@ -43,7 +43,8 @@ properties = {
   useExternalSequencesFiles : false, // this property create one external sequence files for each operation
   writeCoolantCommands : true, // disable the coolant commands in the file
   useParametricFeed : true, // specifies that feed should be output using parameters
-  waitAfterOperation : false // optional stop
+  waitAfterOperation : false, // optional stop
+  hasRotationAxis: false, //Machine is Setup with A axis
 };
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
@@ -1512,83 +1513,41 @@ function onRapid5D(_x, _y, _z, _a, _b, _c) {
 }
 
 function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
-  if (pendingRadiusCompensation >= 0) {
-    error(localize("Radius compensation cannot be activated/deactivated for 5-axis move."));
-    return;
-  }
+	if (pendingRadiusCompensation >= 0) {
+		error(localize("Radius compensation cannot be activated/deactivated for 5-axis move."));
+		return;
+	}
 
-  var f = getFeed(feed);
-  writeBlock(getFeed(feed));
+	var f = getFeed(feed);
+	writeBlock(getFeed(feed));
 
-  if (_x || _y || _z || _a || _b || _c) {
-    var xyzabc = xOutput.format(_x) +
-      yOutput.format(_y) +
-      zOutput.format(_z) +
-      aOutput.format(_a) +
-      bOutput.format(_b) +
-      cOutput.format(_c);
-    writeBlock("Line" + xyzabc);
+	if (_x || _y || _z || _a || _b || _c) {
+		var xyzabc = xOutput.format(_x) +
+			yOutput.format(_y) +
+			zOutput.format(_z) +
+			aOutput.format(_a) +
+			bOutput.format(_b) +
+			cOutput.format(_c);
+		writeBlock("Line" + xyzabc);
 
-  } else if (f) {
-    if (getNextRecord().isMotion()) { // try not to output feed without motion
-      forceFeed(); // force feed on next line
-    } else {
-      //TODO
-      //writeBlock(gMotionModal.format(0), f);
-    }
-  }
+	} else if (f) {
+		if (getNextRecord().isMotion()) { // try not to output feed without motion
+			forceFeed(); // force feed on next line
+		} else {
+			//TODO
+			//writeBlock(gMotionModal.format(0), f);
+		}
+	}
 }
 
-// function onRapid5D(_x, _y, _z, _a, _b, _c) {
-// if (pendingRadiusCompensation >= 0) {
-// error(localize("Radius compensation mode cannot be changed at rapid traversal."));
-// return;
-// }
-// var x = xOutput.format(_x);
-// var y = yOutput.format(_y);
-// var z = zOutput.format(_z);
-// var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "a6p");
-// var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(_b) : "b6p");
-// var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(_c) : "c6p");
-
-// if (currentSection.isOptimizedForMachine() && useRtcpSimu) {
-// // non tcp
-// writeBlock(translate("Submacro") + " Transformpath 0, 1, 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ";");
-// } else {
-// forceXYZ();
-// writeBlock("Axyzabc 1, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ";");
-// }
-// forceFeed();
-// }
-
-// function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
-// if (pendingRadiusCompensation >= 0) {
-// error(localize("Radius compensation cannot be activated/deactivated for 5-axis move."));
-// return;
-// }
-
-// var x = xOutput.format(_x);
-// var y = yOutput.format(_y);
-// var z = zOutput.format(_z);
-// var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "a6p");
-// var b = (machineConfiguration.isMachineCoordinate(1) ? aOutput.format(_b) : "b6p");
-// var c = (machineConfiguration.isMachineCoordinate(2) ? aOutput.format(_c) : "c6p");
-
-// writeBlock(getFeed(feed));
-// if (x || y || z || a || b || c) {
-// if (useRtcpSimu) {
-// writeBlock(translate("Submacro") + " Transformpath 0, 0, 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ";");
-// } else {
-// writeBlock("Axyzabc 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ";");
-// }
-// } else if (f) {
-// if (getNextRecord().isMotion()) { // try not to output feed without motion
-// forceFeed(); // force feed on next line
-// } else {
-// writeBlock(gMotionModal.format(0), f);
-// }
-// }
-// }
+function onRewindMachine(a,b,c){
+     writeBlock("MoveToSafetyPosition");
+    	var abc = 
+        aOutput.format(a) +
+        bOutput.format(b) +
+        cOutput.format(c);
+		writeBlock("Line" + abc);
+}
 
 var currentCoolantMode = COOLANT_OFF;
 
