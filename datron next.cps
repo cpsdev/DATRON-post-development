@@ -68,9 +68,9 @@ var feedOutput = createVariable({prefix:""}, feedFormat);
 var xOutput = createVariable({prefix:" X="}, xyzFormat);
 var yOutput = createVariable({prefix:" Y="}, xyzFormat);
 var zOutput = createVariable({prefix:" Z="}, xyzFormat);
-var aOutput = createVariable({prefix:" A="}, xyzFormat);
-var bOutput = createVariable({prefix:" B="}, xyzFormat);
-var cOutput = createVariable({prefix:" C="}, xyzFormat);
+var aOutput = createVariable({prefix:" A="}, angleFormat);
+var bOutput = createVariable({prefix:" B="}, angleFormat);
+var cOutput = createVariable({prefix:" C="}, angleFormat);
 var iOutput = createVariable({prefix:" dX=", force : true}, feedFormat);
 var jOutput = createVariable({prefix:" dY=", force : true}, feedFormat);
 var kOutput = createVariable({prefix:" dZ="}, feedFormat);
@@ -861,8 +861,10 @@ function setWorkPlane(abc) {
   var xyzabc = aOutput.format(abc.x) +
       bOutput.format(abc.y) +
       cOutput.format(abc.z);
-      
-    writeBlock("SafeRapid" + xyzabc);
+  
+    if (xyzabc){
+      writeBlock("SafeRapid" + xyzabc);
+    }  
   // writeBlock(translate("Submacro") + " Transformoffset 0, ",
   // abcFormat.format(abc.x) +", ",
   // abcFormat.format(abc.y) +", ",
@@ -1032,39 +1034,45 @@ function onSection() {
 
   // forceXYZ();
 
-  // if (machineConfiguration.isMultiAxisConfiguration()) { // use 5-axis indexing for multi-axis mode
-  // // set working plane after datum shift
+  if (machineConfiguration.isMultiAxisConfiguration()) { // use 5-axis indexing for multi-axis mode
+		// set working plane after datum shift
+		if (currentSection.isMultiAxis()) {
+			forceWorkPlane();
+			cancelTransformation();
+			var abc = currentSection.getInitialToolAxisABC();
+			setWorkPlane(abc); // pre-positioning ABC
+		} else {
+			forceWorkPlane();
+			//TODO prüfen ob da sgeht
+			cancelTransformation();
+		
+			var abc = new Vector(0, 0, 0);
+			var abc = getWorkPlaneMachineABC(currentSection.workPlane);
+			
+			
+			setWorkPlane(abc);
+		}
+	} else {
+  
+    // pure 3D
+    var remaining = currentSection.workPlane;
+    if (!isSameDirection(remaining.forward, new Vector(0, 0, 1)) && !properties.hasRotationAxis) {
+      // error(localize("Tool orientation is not supported."));
+      error(
+        "\r\n________________________________________" +
+        "\r\n|              error                    |" +
+        "\r\n|                                       |" +
+        "\r\n| 5 axis operations require adjustments |" +
+        "\r\n| to the postprocessor for your         |" +
+        "\r\n| machining system.                     |" +
+        "\r\n| Please contact www.DATRON.com!        |" +
+        "\r\n|_______________________________________|\r\n");
+      return;
+    }
+    setRotation(remaining);
 
-  // if (currentSection.isMultiAxis()) {
-  // forceWorkPlane();
-  // cancelTransformation();
-  // var abc = currentSection.getInitialToolAxisABC();
-  // setWorkPlane(abc); // pre-positioning ABC
-  // } else {
-  // var abc = new Vector(0, 0, 0);
-  // abc = getWorkPlaneMachineABC(currentSection.workPlane);
-  // setWorkPlane(abc);
-  // }
-  // } else {
-
-  // pure 3D
-  var remaining = currentSection.workPlane;
-  if (!isSameDirection(remaining.forward, new Vector(0, 0, 1))) {
-    // error(localize("Tool orientation is not supported."));
-    error(
-      "\r\n________________________________________" +
-      "\r\n|              error                    |" +
-      "\r\n|                                       |" +
-      "\r\n| 5 axis operations require adjustments |" +
-      "\r\n| to the postprocessor for your         |" +
-      "\r\n| machining system.                     |" +
-      "\r\n| Please contact www.DATRON.com!        |" +
-      "\r\n|_______________________________________|\r\n");
-    return;
+    forceAny();
   }
-  setRotation(remaining);
-
-  forceAny();
 
   if (properties.showNotes && section.hasParameter("notes")) {
     var notes = section.getParameter("notes");
