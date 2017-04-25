@@ -840,10 +840,10 @@ function setWorkPlane(abc) {
     return; // ignore
   }
 
-  if (!((currentWorkPlaneABC == undefined) ||
-      abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
-      abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
-      abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
+   if (currentWorkPlaneABC != undefined) {
+      // abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
+      // abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
+      // abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
         
     return; // no change
   }
@@ -863,7 +863,8 @@ function setWorkPlane(abc) {
       cOutput.format(abc.z);
   
     if (xyzabc){
-      writeBlock("SafeRapid" + xyzabc);
+      writeBlock("MoveToSafetyPosition");
+      writeBlock("Rapid" + xyzabc);
     }  
   // writeBlock(translate("Submacro") + " Transformoffset 0, ",
   // abcFormat.format(abc.x) +", ",
