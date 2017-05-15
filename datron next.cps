@@ -834,19 +834,21 @@ function forceWorkPlane() {
 }
 
 function setWorkPlane(abc) {
-  forceWorkPlane(); // always need the new workPlane
+  writeComment("WorkPlane " + abc);
+  
+  // forceWorkPlane(); // always need the new workPlane
   if (!machineConfiguration.isMultiAxisConfiguration()) {
     writeComment("Machine is not multi Axis support");
     return; // ignore
   }
 
-   if (currentWorkPlaneABC != undefined) {
-      // abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
-      // abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
-      // abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
+   // if (currentWorkPlaneABC != undefined) {
+      // // abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
+      // // abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
+      // // abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
         
-    return; // no change
-  }
+    // return; // no change
+  // }
 
   // //TODO Befehl anpasssen
   //gMotionModal.reset();
@@ -857,7 +859,7 @@ function setWorkPlane(abc) {
   // // writeBlock("Axyzabc 1, x6p, y6p, z6p, A_temp, B_temp, C_temp;");
   // }
 
-  if (!is3D()) {
+  // if (!is3D()) {
   var xyzabc = aOutput.format(abc.x) +
       bOutput.format(abc.y) +
       cOutput.format(abc.z);
@@ -870,7 +872,7 @@ function setWorkPlane(abc) {
   // abcFormat.format(abc.x) +", ",
   // abcFormat.format(abc.y) +", ",
   // abcFormat.format(abc.z) +";");
-  }
+  // }
 
   currentWorkPlaneABC = abc;
 }
@@ -1041,16 +1043,14 @@ function onSection() {
 			forceWorkPlane();
 			cancelTransformation();
 			var abc = currentSection.getInitialToolAxisABC();
-			setWorkPlane(abc); // pre-positioning ABC
+			// setWorkPlane(abc); // pre-positioning ABC
 		} else {
 			forceWorkPlane();
 			//TODO prüfen ob da sgeht
 			cancelTransformation();
 		
-			var abc = new Vector(0, 0, 0);
+			// var abc = new Vector(0, 0, 0);
 			var abc = getWorkPlaneMachineABC(currentSection.workPlane);
-			
-			
 			setWorkPlane(abc);
 		}
 	} else {
@@ -1060,14 +1060,14 @@ function onSection() {
     if (!isSameDirection(remaining.forward, new Vector(0, 0, 1)) && !properties.hasRotationAxis) {
       // error(localize("Tool orientation is not supported."));
       error(
-        "\r\n________________________________________" +
-        "\r\n|              error                    |" +
-        "\r\n|                                       |" +
-        "\r\n| 5 axis operations require adjustments |" +
-        "\r\n| to the postprocessor for your         |" +
-        "\r\n| machining system.                     |" +
-        "\r\n| Please contact www.DATRON.com!        |" +
-        "\r\n|_______________________________________|\r\n");
+        "\r\n______________________________________________" +
+        "\r\n|              error                         |" +
+        "\r\n|                                            |" +
+        "\r\n| 5 axis operation detected.                 |" +
+        "\r\n| If you are using a 4/5th axis,             |" +
+        "\r\n| please enable the hasRotationAxis property.|" +
+        "\r\n| Please contact www.DATRON.com!             |" +
+        "\r\n|____________________________________________|\r\n");
       return;
     }
     setRotation(remaining);
