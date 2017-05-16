@@ -10,12 +10,14 @@
   FORKID {21ADEFBF-939E-4D3F-A935-4E61F5958698}
 */
 
-description = "DATRON NEO";
+description = "DATRON next";
 vendor = "DATRON";
 vendorUrl = "http://www.datron.com";
 legal = "Copyright (C) 2012-2017 by Autodesk, Inc.";
 certificationLevel = 2;
 minimumRevision = 24000;
+
+longDescription = "Post for Datron next control. This post is for use with the Datron neo CNC.";
 
 extension = "simpl";
 setCodePage("utf-8");
@@ -44,33 +46,31 @@ properties = {
   writeCoolantCommands : true, // disable the coolant commands in the file
   useParametricFeed : true, // specifies that feed should be output using parameters
   waitAfterOperation : false, // optional stop
-  hasRotationAxis: false, //Machine is Setup with A axis
+  got4thAxis: false // specifies if the machine has a rotational 4th axis
 };
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
 var mFormat = createFormat({prefix:"M", width:2, zeropad:true, decimals:1});
 
 var xyzFormat = createFormat({decimals:(unit == MM ? 5 : 5), forceDecimal:false});
-var angleFormat = createFormat({decimals:5, scale:DEG});
 var abcFormat = createFormat({decimals:5, scale:DEG});
 var feedFormat = createFormat({decimals:(unit == MM ? 2 : 2)});
 var toolFormat = createFormat({decimals:0});
 var dimensionFormat = createFormat({decimals:(unit == MM ? 3 : 5), forceDecimal:false});
 var rpmFormat = createFormat({decimals:0, scale:1});
 var sleepFormat = createFormat({decimals:0, scale:1000}); // milliseconds
-var milliFormat = createFormat({decimals:0}); // milliseconds // range 1-9999
 var workpieceFormat = createFormat({decimals:(unit == MM ? 3 : 4), forceSign:true, trim:false});
 
 var toolOutput = createVariable({prefix:"Tool_", force:true}, toolFormat);
-var sOutput = createVariable({prefix:"S", force:true}, rpmFormat);
 var feedOutput = createVariable({prefix:""}, feedFormat);
 
 var xOutput = createVariable({prefix:" X="}, xyzFormat);
 var yOutput = createVariable({prefix:" Y="}, xyzFormat);
 var zOutput = createVariable({prefix:" Z="}, xyzFormat);
-var aOutput = createVariable({prefix:" A="}, angleFormat);
-var bOutput = createVariable({prefix:" B="}, angleFormat);
-var cOutput = createVariable({prefix:" C="}, angleFormat);
+var aOutput = createVariable({prefix:" A="}, abcFormat);
+var bOutput = createVariable({prefix:" B="}, abcFormat);
+var cOutput = createVariable({prefix:" C="}, abcFormat);
+
 var iOutput = createVariable({prefix:" dX=", force : true}, feedFormat);
 var jOutput = createVariable({prefix:" dY=", force : true}, feedFormat);
 var kOutput = createVariable({prefix:" dZ="}, feedFormat);
@@ -78,17 +78,14 @@ var kOutput = createVariable({prefix:" dZ="}, feedFormat);
 // fixed settings
 var useDatronFeedCommand = false; // unsupported for now, keep false
 var language = "de"; // specifies the language, replace with getLangId()
-var useRtcpSimu = false; // BETA, use TCP "light" or not
 var spacingDepth = 0;
 var spacingString = "  ";
 var sequenceFile = new StringBuffer();
 var spacing = "##########################################################";
 
 // collected state
-var currentWorkOffset;
 var currentFeedValue = -1;
 var optionalSection = false;
-var forceSpindleSpeed = false;
 var activeMovements; // do not use by default
 var currentFeedId;
 
@@ -101,10 +98,10 @@ var nowHour = now.getHours();
 var nowMin = now.getMinutes();
 var nowSec = now.getSeconds();
 
-function getSequenceName(section) { 
+function getSequenceName(section) {
   var sequenceName = "";
-  if (properties.useExternalSequencesFiles){    
-    sequenceName += FileSystem.getFilename(getOutputPath().substr(0, getOutputPath().lastIndexOf("."))) + "_";  
+  if (properties.useExternalSequencesFiles) {
+    sequenceName += FileSystem.getFilename(getOutputPath().substr(0, getOutputPath().lastIndexOf("."))) + "_";
   }
   sequenceName += "SEQUENCE_" + mapComment(getOperationDescription(section));
   return sequenceName;
@@ -175,75 +172,55 @@ function formatVariable(text) {
 }
 
 function onOpen() {
-	// dump("onOpen", arguments);
-	// if(hasParameter("hostname")){
-	// writeComment(getParameter("hostname"));
-	// }
-	// else{
-	// writeComment("NO hostname");
-	// }
+  // note: setup your machine here
+  if (properties.got4thAxis) {
+    var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[0, 360], cyclic:true, preference:0});
+    machineConfiguration = new MachineConfiguration(aAxis);
+    machineConfiguration.setVendor("DATRON");
+    machineConfiguration.setModel("NEO with A Axis");
+    machineConfiguration.setDescription("DATRON NEXT Control  with additional A-Axis");
+    setMachineConfiguration(machineConfiguration);
+    optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
+  }
 
-	if (properties.hasRotationAxis) { // note: setup your machine here
-		//Neo with Rotation axis
-		var aAxis = createAxis({
-				coordinate : 0,
-				table : true,
-				axis : [1, 0, 0],
-				range : [0, 360],
-				cyclic : true,
-				preference : 0
-			});
-		machineConfiguration = new MachineConfiguration(aAxis);
-		machineConfiguration.setVendor("DATRON");
-		machineConfiguration.setModel("NEO with A Axis");
-		machineConfiguration.setDescription("DATRON NEXT Control  with additional A-Axis")
-		setMachineConfiguration(machineConfiguration);
-		optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
-	}
+  if (!machineConfiguration.isMachineCoordinate(0)) {
+    aOutput.disable();
+  }
+  if (!machineConfiguration.isMachineCoordinate(1)) {
+    bOutput.disable();
+  }
+  if (!machineConfiguration.isMachineCoordinate(2)) {
+    cOutput.disable();
+  }
 
-	//controls the axis configuration
-	if (!machineConfiguration.isMachineCoordinate(0)) {
-		aOutput.disable();
-	}
-	if (!machineConfiguration.isMachineCoordinate(1)) {
-		bOutput.disable();
-	}
-	if (!machineConfiguration.isMachineCoordinate(2)) {
-		cOutput.disable();
-	}
+  // header
+  writeProgramHeader();
 
-	// header
-	writeProgramHeader();
+  // write programm calls
+  var numberOfSections = getNumberOfSections();
+  for (var i = 0; i < numberOfSections; ++i) {
+    var section = getSection(i);
+    var opName = getOperationName(section);
+    var sectionID = i + 1;
+    writeBlock(opName);
+  }
 
-	//write programm calls
-	var numberOfSections = getNumberOfSections();
-	for (var i = 0; i < numberOfSections; ++i) {
-		var section = getSection(i);
-		var opName = getOperationName(section);
-		var sectionID = i + 1;
-		writeBlock(opName);
-	}
+  onCommand(COMMAND_COOLANT_OFF);
 
-	onCommand(COMMAND_COOLANT_OFF);
-	if (!is3D()) {
-		//writeBlock(translate("Submacro") + " Endmacro;");
-	}
+  writeBlock("Spindle Off");
 
-	writeBlock("Spindle Off");
+  setWorkPlane(new Vector(0, 0, 0)); // reset working plane
+  if (properties.useParkPosition) {
+    writeBlock("MoveToParkPosition");
+  } else {
+    writeBlock("MoveToSafetyPosition");
+    zOutput.reset();
+  }
 
-	setWorkPlane(new Vector(0, 0, 0)); // reset working plane
-	if (properties.useParkPosition) {
-		writeBlock("MoveToParkPosition");
-	} else {
-		writeBlock("MoveToSafetyPosition");
-		zOutput.reset();
-	}
-
-	spacingDepth -= 1;
-	writeBlock("endprogram #" + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
-	writeln("");
-
-}
+  spacingDepth -= 1;
+  writeBlock("endprogram #" + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
+  writeln("");
+  }
 
 function getOperationDescription(section) {
   // creates the name of the operation
@@ -264,12 +241,6 @@ function getOperationDescription(section) {
   return description;
 }
 
-/**
-  Write the old fashion way the number of the tools as paramter table.
-
-  Is deprecated on the new next control -> better way with tooldescription
-  See function WriteToolTable().
-// */
 function createToolVariables() {
   var tools = getToolTable();
   if (tools.getNumberOfTools() > 0 && !properties.writeToolTable) {
@@ -282,36 +253,34 @@ function createToolVariables() {
 }
 
 function createToolDescriptionTable() {
-  if (!properties.writeToolTable) {return};
+  if (!properties.writeToolTable) {
+    return;
+  }
   var toolDescriptionArray = new Array();
   var toolNameList = new Array();
   var numberOfSections = getNumberOfSections();
   for (var i = 0; i < numberOfSections; ++i) {
-		var section = getSection(i);
-    var tool = section.getTool();  
-    
+    var section = getSection(i);
+    var tool = section.getTool();
     if (tool.type != TOOL_PROBE) {
-    
-      var toolName = createToolName(tool);      
-      var toolProgrammed = createToolDescription(tool);    
-      if (toolNameList.indexOf(toolName)==-1){
-        toolNameList.push(toolName);      
-        toolDescriptionArray.push(toolProgrammed)        
-      }
-      else
-      { 
-         if(toolDescriptionArray.indexOf(toolProgrammed)==-1){
-          error("\r\n#####################################\r\nOne ore more tools have the same name!\r\nPlease change the tool number to make the name unique.\r\n" + toolDescriptionArray.join("\r\n") + "\r\n\r\n" +
-          toolNameList.join("\r\n") + "#####################################\r\n");
+      var toolName = createToolName(tool);
+      var toolProgrammed = createToolDescription(tool);
+      if (toolNameList.indexOf(toolName) == -1) {
+        toolNameList.push(toolName);
+        toolDescriptionArray.push(toolProgrammed);
+      } else {
+         if (toolDescriptionArray.indexOf(toolProgrammed) == -1) {
+           error("\r\n#####################################\r\nOne ore more tools have the same name!\r\nPlease change the tool number to make the name unique.\r\n" + toolDescriptionArray.join("\r\n") + "\r\n\r\n" +
+           toolNameList.join("\r\n") + "#####################################\r\n");
          }
       }
-    }   
-  }  
+    }
+  }
  
   writeBlock(toolDescriptionArray.join("\r\n"));
 }
 
-function createToolDescription(tool){
+function createToolDescription(tool) {
   var toolProgrammed = "@ ToolDescription : " +
       "\"" + "Name" + "\"" + ":" +  "\"" + createToolName(tool) + "\"" + ", " +
       "\"" + "Category" + "\"" + ":" +  "\"" + translateToolType(tool.type) + "\"" + ", " +
@@ -342,10 +311,10 @@ function createToolName(tool) {
   toolName += "_" + translateToolType(tool.type);
   if (tool.comment) {
     toolName += "_" + tool.comment;
-  } 
-  if (tool.diameter){
+  }
+  if (tool.diameter) {
     toolName += "_D" + tool.diameter;
-  } 
+  }
   var description = tool.getDescription();
   if (description) {
     toolName += "_" + description;
@@ -387,9 +356,6 @@ function translateToolType(toolType) {
   case TOOL_MILLING_END_BULLNOSE:
     datronCategoryName = "MillingEndBullnose";
     break;
-    // case "chamfer mill":
-    // datronCategoryName =  "MillingChamfer";
-    // break;
   case TOOL_MILLING_CHAMFER:
     datronCategoryName = "Graver";
     break;
@@ -628,16 +594,16 @@ function FeedContext(id, description, datronFeedName, feed) {
 
 /** Maps the specified feed value to Q feed or formatted feed. */
 function getFeed(f) {
-  if (activeMovements) {			
+  if (activeMovements) {
     var feedContext = activeMovements[movement];
-    if (feedContext != undefined) {		
+    if (feedContext != undefined) {
       if (!feedFormat.areDifferent(feedContext.feed, f)) {
         if (feedContext.id == currentFeedId) {
           return ""; // nothing has changed
         }
         forceFeed();
         currentFeedId = feedContext.id;
-        if (useDatronFeedCommand) {        
+        if (useDatronFeedCommand) {
           return ("Feed " + capitalizeFirstLetter(feedContext.datronFeedName));
         } else {
           return ("Feed=" + formatVariable(feedContext.description));
@@ -762,7 +728,6 @@ function initializeActiveFeeds(section) {
 
   // this part allows us to use feedContext also for the cycles
   if (hasParameter("operation:cycleType")) {
-
     var cycleType = getParameter("operation:cycleType");
     if (hasParameter("movement:plunge")) {
       var feedContext = new FeedContext(id, localize("Plunge"), "plunge", section.getParameter("movement:plunge"));
@@ -806,7 +771,6 @@ function initializeActiveFeeds(section) {
       }
       break;
     }
-    
   }
 
   if (true) { // high feed
@@ -834,45 +798,23 @@ function forceWorkPlane() {
 }
 
 function setWorkPlane(abc) {
-  writeComment("WorkPlane " + abc);
-  
-  // forceWorkPlane(); // always need the new workPlane
   if (!machineConfiguration.isMultiAxisConfiguration()) {
-    writeComment("Machine is not multi Axis support");
     return; // ignore
   }
 
-   // if (currentWorkPlaneABC != undefined) {
-      // // abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
-      // // abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
-      // // abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
-        
-    // return; // no change
-  // }
+  forceWorkPlane(); // always need the new workPlane
 
-  // //TODO Befehl anpasssen
-  //gMotionModal.reset();
-  // if (!is3D()) {
-  // // writeBlock("A_temp = " + (machineConfiguration.isMachineCoordinate(0) ? abcFormat.format(abc.x) : "a6p") + " - A_delta;");
-  // // writeBlock("B_temp = " + (machineConfiguration.isMachineCoordinate(1) ? abcFormat.format(abc.y) : "b6p") + " - B_delta;");
-  // // writeBlock("C_temp = " + (machineConfiguration.isMachineCoordinate(2) ? abcFormat.format(abc.z) : "c6p") + " - C_delta;");
-  // // writeBlock("Axyzabc 1, x6p, y6p, z6p, A_temp, B_temp, C_temp;");
-  // }
+/*
+  if (currentWorkPlaneABC != undefined) {
+    abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
+    abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
+    abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
+    return; // no change
+  }
+*/
 
-  // if (!is3D()) {
-  var xyzabc = aOutput.format(abc.x) +
-      bOutput.format(abc.y) +
-      cOutput.format(abc.z);
-  
-    if (xyzabc){
-      writeBlock("MoveToSafetyPosition");
-      writeBlock("Rapid" + xyzabc);
-    }  
-  // writeBlock(translate("Submacro") + " Transformoffset 0, ",
-  // abcFormat.format(abc.x) +", ",
-  // abcFormat.format(abc.y) +", ",
-  // abcFormat.format(abc.z) +";");
-  // }
+  writeBlock("MoveToSafetyPosition");
+  writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
 
   currentWorkPlaneABC = abc;
 }
@@ -935,8 +877,8 @@ var isInsideSection = false;
 function onSection() {
   if (isProbeOperation(currentSection)) {
     // TAG: remove once probing is supported properly, waiting for Datron
-  //  error(localize("Probing is not supported for now."));
-   // return;
+    error(localize("Probing is not supported for now."));
+    return;
   }
 
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
@@ -965,9 +907,9 @@ function onSection() {
   if (passThrough) {
     var joinString = "\r\n" + getSpacing();
     var passThroughString = passThrough.join(joinString);
-    if (passThroughString != ""){
+    if (passThroughString != "") {
       writeBlock(passThroughString);
-    }  
+    }
     passThrough = [];
   }
 
@@ -978,102 +920,37 @@ function onSection() {
     showWaitDialog();
   }
 
-  // writeComment("IsPatterned: " + section.isPatterned() );
-  // var id = section.getPatternId();
-  // writeComment("PatternID: " + id );
-  // writeComment("Anzahl der Pattern: " + section.getNumberOfPatternsInstances);
-
-  // var insertToolCall = forceToolAndRetract || isFirstSection() ||
-  // currentSection.getForceToolChange && currentSection.getForceToolChange() ||
-  // (tool.number != getPreviousSection().getTool().number);
-
-  // var retracted = false; // specifies that the tool has been retracted to the safe plane
-  // var newWorkOffset = isFirstSection() ||
-  // (getPreviousSection().workOffset != currentSection.workOffset); // work offset changes
-  // var newWorkPlane = isFirstSection() ||
-  // !isSameDirection(getPreviousSection().getGlobalFinalToolAxis(), currentSection.getGlobalInitialToolAxis());
-
-  // // insert tool call
-  // var tool = currentSection.getTool();
-  // if (insertToolCall || newWorkOffset || newWorkPlane) {
-  // retracted = true;
-  // writeBlock("MoveToSafetyPosition");
-  // forceXYZ();
-  // }
-
-  // if (insertToolCall) {
-  // forceWorkPlane();
-  // retracted = true;
-
-  // // if (tool.number > 99) {
-  // // warning(localize("Tool number exceeds maximum value."));
-  // // }
-  // }
-
-  // if (insertToolCall ||
-  // forceSpindleSpeed ||
-  // isFirstSection() ||
-  // (rpmFormat.areDifferent(tool.spindleRPM, sOutput.getCurrent())) ||
-  // (tool.clockwise != getPreviousSection().getTool().clockwise)) {
-  // forceSpindleSpeed = false;
-
-  // TAG: ToolCheck
-  // if (tool.spindleRPM < 6000) {
-  // tool.spindleRPM = 6000;
-  // }
-  // if (tool.spindleRPM > 60000) {
-  // warning(localize("Spindle speed exceeds maximum value."));
-  // }
-  // if (!tool.clockwise) {
-  // error(localize("Spindle direction not supported."));
-  // return;
-  // }
-
-  // // onCommand(COMMAND_START_CHIP_TRANSPORT);
-  // if (!is3D() || machineConfiguration.isMultiAxisConfiguration()) {
-  // // writeBlock(mFormat.format(xxx)); // shortest path traverse
-  // }
-  // }
-
-  // forceXYZ();
-
-  if (machineConfiguration.isMultiAxisConfiguration()) { // use 5-axis indexing for multi-axis mode
-		// set working plane after datum shift
-		if (currentSection.isMultiAxis()) {
-			forceWorkPlane();
-			cancelTransformation();
-			var abc = currentSection.getInitialToolAxisABC();
-			// setWorkPlane(abc); // pre-positioning ABC
-		} else {
-			forceWorkPlane();
-			//TODO prüfen ob da sgeht
-			cancelTransformation();
-		
-			// var abc = new Vector(0, 0, 0);
-			var abc = getWorkPlaneMachineABC(currentSection.workPlane);
-			setWorkPlane(abc);
-		}
-	} else {
-  
+  if (machineConfiguration.isMultiAxisConfiguration()) {
+    if (currentSection.isMultiAxis()) {
+      forceWorkPlane();
+      cancelTransformation();
+      var abc = currentSection.getInitialToolAxisABC();
+      writeBlock("MoveToSafetyPosition");
+      writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
+    } else {
+      var abc = getWorkPlaneMachineABC(currentSection.workPlane);
+      setWorkPlane(abc);
+    }
+  } else {
     // pure 3D
     var remaining = currentSection.workPlane;
-    if (!isSameDirection(remaining.forward, new Vector(0, 0, 1)) && !properties.hasRotationAxis) {
-      // error(localize("Tool orientation is not supported."));
-      error(
-        "\r\n______________________________________________" +
-        "\r\n|              error                         |" +
-        "\r\n|                                            |" +
-        "\r\n| 5 axis operation detected.                 |" +
-        "\r\n| If you are using a 4/5th axis,             |" +
-        "\r\n| please enable the hasRotationAxis property.|" +
-        "\r\n| Please contact www.DATRON.com!             |" +
-        "\r\n|____________________________________________|\r\n");
+    if (!isSameDirection(remaining.forward, new Vector(0, 0, 1)) || currentSection.isMultiAxis()) {
+      error("\r\n_________________________________________" +
+         "\r\n|              error                     |" +
+         "\r\n|                                        |" +
+         "\r\n| Tool orientation detected.             |" +
+         "\r\n| You have to enable the property        |" +
+         "\r\n| got4thAxis, otherwise you can only post|" +
+         "\r\n| 3 Axis programs.                       |" +
+         "\r\n| If you still have issues,              |" +
+         "\r\n| please contact www.DATRON.com!         |" +
+         "\r\n|________________________________________|\r\n");
       return;
     }
     setRotation(remaining);
-
-    forceAny();
   }
+  
+  forceAny();
 
   if (properties.showNotes && section.hasParameter("notes")) {
     var notes = section.getParameter("notes");
@@ -1090,9 +967,9 @@ function onSection() {
     }
   }
 
-  if (hasParameter("operation:clearanceHeight_value")) {
-    // clearanceHeight_value
-    var clearance = getParameter("operation:clearanceHeight_value");
+  // TAG is this really needed?
+  if (hasParameter("operation:clearanceHeight")) {
+    var clearance = getParameter("operation:clearanceHeight");
     writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
   } else {
     // not found
@@ -1107,22 +984,25 @@ function onSection() {
     // set coolant after we have positioned at Z
     setCoolant(tool.coolant);
 
-    // make the tool changer command
+    // tool changer command
     if (properties.writeToolTable) {
       writeBlock("Tool name=" + "\"" + createToolName(tool) + "\"" +
         " newRpm=" + rpmFormat.format(tool.spindleRPM) +
-        " skipRestoring");
+        " skipRestoring"
+      );
     } else {
       writeBlock("Tool = " + toolOutput.format(tool.number) +
         " newRpm=" + rpmFormat.format(tool.spindleRPM) +
-        " skipRestoring");
+        " skipRestoring"
+      );
     }
+
 
     // set the current feed
     // replace by the default feed command
-    if (properties.useParametricFeed && !hasParameter("operation:cycleType")) {
-      activeFeeds = initializeActiveFeeds(section);		
-      if (useDatronFeedCommand  ) {
+    if (properties.useParametricFeed && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
+      activeFeeds = initializeActiveFeeds(section);
+      if (useDatronFeedCommand) {
         var datronFeedParameter = new Array();
         for (var j = 0; j < activeFeeds.length; ++j) {
           var feedContext = activeFeeds[j];
@@ -1153,7 +1033,7 @@ function onSection() {
         }
       }
     }
-  } 
+  }
 
   // parameter for the sequences
   var sequenceParamter = new Array();
@@ -1164,9 +1044,7 @@ function onSection() {
 
     switch (cycleType) {
     case "thread-milling":
-			writeBlock("SetFeedTechnology" + " ramp=" + section.getParameter('movement:cutting') + " finishing=" + section.getParameter('movement:finish_cutting'));
-	
-		
+      writeBlock("SetFeedTechnology" + " ramp=" + section.getParameter("movement:cutting") + " finishing=" + section.getParameter("movement:finish_cutting"));
       var diameter = section.getParameter("diameter");
       var clearance = section.getParameter("clearance");
       var retract = section.getParameter("retract");
@@ -1177,104 +1055,80 @@ function onSection() {
       sequenceParamter.push("nominalDiameter=nominalDiameter");
       writeBlock("pitch=" + xyzFormat.format(pitch));
       sequenceParamter.push("pitch=pitch");
-
       // writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
       // sequenceParamter.push('threadName=threadName');
-
       // writeBlock("threading = " + section.getParameter("threading"));
       // sequenceParamter.push("threading=threading");
-
-
       var fastzplunge = clearance - retract;
       //writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
       //sequenceParamter.push("strokeRapidZ=strokeRapidZ");
-
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
       sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
-
       // TAG: den Standard auch mit Imerial unterstuezten
       // sequenceParamter.push("threadStandard=ThreadStandards.Metric");
-
       // // sequenceParamter.push("deburring=ThreadMillingDeburring.NoDeburring");
       // // sequenceParamter.push("insideOutside=ThreadMillingSide.Inside");
       // // sequenceParamter.push("direction=ThreadMillingDirection.RightHandThread");
       // sequenceParamter.push("finishing=0.1");
-
       // writeBlock("direction = " + dimensionFormat.format(section.getParameter("direction")));
       // sequenceParamter.push("direction=direction");
-
       // writeBlock("repeatPass = " + dimensionFormat.format(section.getParameter("repeatPass")));
       // sequenceParamter.push("repeatPass=repeatPass");
       break;
-    case "bore-milling":		
-			writeBlock("SetFeedTechnology roughing=" + section.getParameter('movement:cutting') + " finishing=" + section.getParameter('movement:cutting'));
-			
+    case "bore-milling":
+      writeBlock("SetFeedTechnology roughing=" + section.getParameter("movement:cutting") + " finishing=" + section.getParameter("movement:cutting"));
       writeBlock("diameter = " + dimensionFormat.format(section.getParameter("diameter")));
       sequenceParamter.push("diameter=diameter");
 
       var clearance = section.getParameter("clearance");
       var retract = section.getParameter("retract");
       var stock = section.getParameter("stock");
-
       var fastzplunge = clearance - retract;
       // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
       // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
-
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
       sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
-
       writeBlock("infeedZ = " + dimensionFormat.format(section.getParameter("pitch")));
       sequenceParamter.push("infeedZ=infeedZ");
-
       writeBlock("repeatPass = " + dimensionFormat.format(section.getParameter("repeatPass")));
       sequenceParamter.push("repeatPass=repeatPass");
       break;
-
-    case "drilling":		
-      writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge'));
+    case "drilling":
+      writeBlock("SetFeedTechnology plunge=" + section.getParameter("movement:plunge"));
   
       var clearance = section.getParameter("clearance");
       var retract = section.getParameter("retract");
       var stock = section.getParameter("stock");
-
       var fastzplunge = clearance - retract;
       // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
       // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
-
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
       sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
-      
       break;
-    
   case "chip-breaking":
-      writeBlock("SetFeedTechnology plunge=" + section.getParameter('movement:plunge') + " roughing=" + section.getParameter('movement:cutting'));
+      writeBlock("SetFeedTechnology plunge=" + section.getParameter("movement:plunge") + " roughing=" + section.getParameter("movement:cutting"));
 
       var clearance = section.getParameter("clearance");
       var retract = section.getParameter("retract");
       var stock = section.getParameter("stock");
-
       var fastzplunge = clearance - retract;
       // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
       // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
-
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
       sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
-
       writeBlock("infeedZ = " + dimensionFormat.format(section.getParameter("incrementalDepth")));
       sequenceParamter.push("infeedZ=infeedZ");
-   
       break;
     }
-
   }
 
   if (properties.useSequences) {
     // call sequence
-    if (properties.useParametricFeed && (!useDatronFeedCommand) && !hasParameter("operation:cycleType")) {
+    if (properties.useParametricFeed && (!useDatronFeedCommand) && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
       activeFeeds = initializeActiveFeeds(section);
       for (var j = 0; j < activeFeeds.length; ++j) {
         var feedContext = activeFeeds[j];
@@ -1291,7 +1145,7 @@ function onSection() {
       var filename = getOutputPath();
       //sequenceFilePath = filename.substr(0, filename.lastIndexOf(".")) + "_" + currentSequenceName + ".seq";
       sequenceFilePath = FileSystem.getFolderPath(getOutputPath()) + "\\";
-      sequenceFilePath += currentSequenceName + ".seq"
+      sequenceFilePath += currentSequenceName + ".seq";
       redirectToFile(sequenceFilePath);
     } else {
       redirectToBuffer();
@@ -1330,7 +1184,7 @@ function onSection() {
 */
       writeBlock("Dynamic = " + 5);
     }
-  } else {    
+  } else {
     writeBlock("Spindle Off");
     writeBlock("PrepareXyzSensor");
   }
@@ -1377,7 +1231,7 @@ function onRadiusCompensation() {
   pendingRadiusCompensation = radiusCompensation;
 }
 
-function onRapid(x, y, z) {  
+function onRapid(x, y, z) {
   var xyz = "";
   xyz += x ? xOutput.format(x) : "";
   xyz += y ? yOutput.format(y) : "";
@@ -1466,14 +1320,8 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
         (clockwise ? " CW" : " CCW") +
         xOutput.format(x) +
         iOutput.format(cx - start.x) +
-        jOutput.format(cy - start.y))
+        jOutput.format(cy - start.y));
       break;
-      // case PLANE_ZX:
-      // writeBlock(gPlaneModal.format(18), gMotionModal.format(clockwise ? 2 : 3), zOutput.format(z), iOutput.format(cx - start.x, 0), kOutput.format(cz - start.z, 0), feedOutput.format(feed));
-      // break;
-      // case PLANE_YZ:
-      // writeBlock(gPlaneModal.format(19), gMotionModal.format(clockwise ? 2 : 3), yOutput.format(y), jOutput.format(cy - start.y, 0), kOutput.format(cz - start.z, 0), feedOutput.format(feed));
-      // break;
     default:
       linearize(tolerance);
     }
@@ -1486,14 +1334,8 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
         yOutput.format(y) +
         zOutput.format(z) +
         iOutput.format(cx - start.x) +
-        jOutput.format(cy - start.y))
+        jOutput.format(cy - start.y));
       break;
-      // case PLANE_ZX:
-      // writeBlock(gPlaneModal.format(18), gMotionModal.format(clockwise ? 2 : 3), xOutput.format(x), yOutput.format(y), zOutput.format(z), iOutput.format(cx - start.x, 0), kOutput.format(cz - start.z, 0), feedOutput.format(feed));
-      // break;
-      // case PLANE_YZ:
-      // writeBlock(gPlaneModal.format(19), gMotionModal.format(clockwise ? 2 : 3), xOutput.format(x), yOutput.format(y), zOutput.format(z), jOutput.format(cy - start.y, 0), kOutput.format(cz - start.z, 0), feedOutput.format(feed));
-      // break;
     default:
       linearize(tolerance);
     }
@@ -1508,54 +1350,46 @@ function onRapid5D(_x, _y, _z, _a, _b, _c) {
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
   var z = zOutput.format(_z);
+  var a = aOutput.format(_a);
+  var b = bOutput.format(_b);
+  var c = cOutput.format(_c);
 
-  var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "");
-  var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(_b) : "");
-  var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(_c) : "");
-
-  //if (currentSection.isOptimizedForMachine()) {
-  forceABC;
+  forceABC();
   var xyzabc = x + y + z + a + b + c;
   writeBlock("Rapid" + xyzabc);
-  //}
   forceFeed();
 }
 
 function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
-	if (pendingRadiusCompensation >= 0) {
-		error(localize("Radius compensation cannot be activated/deactivated for 5-axis move."));
-		return;
-	}
-
-	var f = getFeed(feed);
-	writeBlock(getFeed(feed));
-
-	if (_x || _y || _z || _a || _b || _c) {
-		var xyzabc = xOutput.format(_x) +
-			yOutput.format(_y) +
-			zOutput.format(_z) +
-			aOutput.format(_a) +
-			bOutput.format(_b) +
-			cOutput.format(_c);
-		writeBlock("Line" + xyzabc);
-
-	} else if (f) {
-		if (getNextRecord().isMotion()) { // try not to output feed without motion
-			forceFeed(); // force feed on next line
-		} else {
-			//TODO
-			//writeBlock(gMotionModal.format(0), f);
-		}
-	}
+  if (pendingRadiusCompensation >= 0) {
+    error(localize("Radius compensation cannot be activated/deactivated for 5-axis move."));
+    return;
+  }
+  var x = xOutput.format(_x);
+  var y = yOutput.format(_y);
+  var z = zOutput.format(_z);
+  var a = aOutput.format(_a);
+  var b = bOutput.format(_b);
+  var c = cOutput.format(_c);
+  var f = getFeed(feed);
+  
+  writeBlock(getFeed(feed));
+  if (x || y || z || a || b || c) {
+    var xyzabc = x + y + z + a + b + c;
+    writeBlock("Line" + xyzabc);
+  } else if (f) {
+    if (getNextRecord().isMotion()) { // try not to output feed without motion
+      forceFeed(); // force feed on next line
+    } else {
+      writeBlock(getFeed(feed));
+    }
+  }
 }
 
-function onRewindMachine(a,b,c){
-     writeBlock("MoveToSafetyPosition");
-    	var abc = 
-        aOutput.format(a) +
-        bOutput.format(b) +
-        cOutput.format(c);
-		writeBlock("Line" + abc);
+function onRewindMachine(a, b, c) {
+  writeBlock("MoveToSafetyPosition");
+  var abc = aOutput.format(a) + bOutput.format(b) + cOutput.format(c);
+  writeBlock("Line" + abc);
 }
 
 var currentCoolantMode = COOLANT_OFF;
@@ -1629,21 +1463,11 @@ function onCommand(command) {
 }
 
 function onCycle() {
-  // writeBlock(gPlaneModal.format(17));	
-	useDatronFeedCommand=true
-  writeBlock
+  // useDatronFeedCommand = true;
 }
-
 
 function onCycleEnd() {
-  // writeBlock(gPlaneModal.format(17));	
-	useDatronFeedCommand=false
-}
-
-
-function getCommonCycle(x, y, z, r) {
-  forceXYZ(); // force xyz on first drill hole of any cycle
-  return [xOutput.format(x), yOutput.format(y), zOutput.format(z), "R" + xyzFormat.format(r)];
+  // useDatronFeedCommand = false;
 }
 
 function isProbeOperation() {
@@ -1664,34 +1488,32 @@ function onCyclePoint(x, y, z) {
 
   switch (cycleType) {
   case "bore-milling":
-    forceXYZ();   
-    onRapid(x,y,null);
-    onRapid(x,y,cycle.retract);
+    forceXYZ();
+    onRapid(x, y, null);
+    onRapid(x, y, cycle.retract);
     boreMilling(cycle);
     onRapid(x, y, cycle.clearance);
     break;
   case "thread-milling":
-    // expandCyclePoint(x, y, z);
-    // break;
-    forceXYZ();   
-    onRapid(x,y,null);
-    onRapid(x,y,cycle.retract);
+    forceXYZ();
+    onRapid(x, y, null);
+    onRapid(x, y, cycle.retract);
     threadMilling(cycle);
     onRapid(x, y, cycle.clearance);
     break;
-	case "drilling":
-		forceXYZ();    
-    onRapid(x,y,null);
-    onRapid(x,y,cycle.retract);    
+  case "drilling":
+    forceXYZ();
+    onRapid(x, y, null);
+    onRapid(x, y, cycle.retract);
     drilling(cycle);
-		onRapid(x, y, cycle.clearance);
+    onRapid(x, y, cycle.clearance);
     break;
-	case "chip-breaking":
-		forceXYZ();
-    onRapid(x,y,null);
-    onRapid(x,y,cycle.retract);   
-    chip_breaking(cycle);
-		onRapid(x, y, cycle.clearance);
+  case "chip-breaking":
+    forceXYZ();
+    onRapid(x, y, null);
+    onRapid(x, y, cycle.retract);
+    chipBreaking(cycle);
+    onRapid(x, y, cycle.clearance);
     break;
   case "probing-x":
     forceXYZ();
@@ -1735,32 +1557,26 @@ function onCyclePoint(x, y, z) {
 
 
 function drilling(cycle) {
- 
   var boreCommandString = new Array();
-  boreCommandString.push("Drill");
- 
   var depth = xyzFormat.format(cycle.depth);
+  
+  boreCommandString.push("Drill");
   boreCommandString.push("depth=" + depth);
-
   //boreCommandString.push("strokeRapidZ=strokeRapidZ");
-  boreCommandString.push("strokeCuttingZ=strokeCuttingZ");  
-
+  boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   writeBlock(boreCommandString.join(" "));
 }
 
 
-function chip_breaking(cycle) {
- 
+function chipBreaking(cycle) {
   var boreCommandString = new Array();
-  boreCommandString.push("Drill");
-
   var depth = xyzFormat.format(cycle.depth);
+  
+  boreCommandString.push("Drill");
   boreCommandString.push("depth=" + depth);
-
   //boreCommandString.push("strokeRapidZ=strokeRapidZ");
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
- 
   writeBlock(boreCommandString.join(" "));
 }
 
@@ -1772,12 +1588,11 @@ function boreMilling(cycle) {
   }
 
   var boreCommandString = new Array();
+  var depth = xyzFormat.format(cycle.depth);
+  
   boreCommandString.push("DrillMilling");
   boreCommandString.push("diameter=diameter");
-
-  var depth = xyzFormat.format(cycle.depth);
   boreCommandString.push("depth=" + depth);
-
   //boreCommandString.push("strokeRapidZ=strokeRapidZ");
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
@@ -1785,36 +1600,32 @@ function boreMilling(cycle) {
   if (cycle.numberofsteps == 2) {
     var xycleaning = cycle.stepover;
     var maxzdepthperstep = tool.flutelength * 0.8;
-
     boreCommandString.push("finishingXY=" + xyzFormat.format(xycleaning));
     boreCommandString.push("infeedFinishingZ=" + xyzFormat.format(maxzdepthperstep));
   }
 
   var bottomcleaning = 0;
   // finishingZ = 1;
-
   writeBlock(boreCommandString.join(" "));
 }
 
 function threadMilling(cycle) {
 
   var threadString = new Array();
+  var depth = xyzFormat.format(cycle.depth);
+  
   threadString.push("SpecialThread");
   // threadString.push('threadName=threadName');
   threadString.push("nominalDiameter=nominalDiameter");
   threadString.push("pitch=pitch");
-
-  var depth = xyzFormat.format(cycle.depth);
   threadString.push("depth=" + depth);
   //threadString.push("strokeRapidZ=strokeRapidZ");
   threadString.push("strokeCuttingZ=strokeCuttingZ");
-
   // threadString.push("threadStandard=threadStandard");
   // threadString.push("deburring=ThreadMillingDeburring.NoDeburring");
   // threadString.push("insideOutside=ThreadMillingSide.Inside");
   // threadString.push("direction=ThreadMillingDirection.RightHandThread");
   // threadString.push("finishing=0.1");
-
   writeBlock(threadString.join(" "));
 }
 
