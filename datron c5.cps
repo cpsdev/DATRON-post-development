@@ -32,6 +32,7 @@ minimumCircularSweep = toRad(0.01);
 maximumCircularSweep = toRad(90); // avoid potential center calculation errors for CNC
 allowHelicalMoves = false;
 allowedCircularPlanes = (1 << PLANE_XY); // allow XY plane only
+mapWorkOrigin = true; // keep true per default, en/disable the mapping of the work origin
 
 // user-defined properties
 properties = {
@@ -42,9 +43,9 @@ properties = {
   showNotes: false, // specifies that operation notes should be output
   useSmoothing: true, // specifies if smoothing should be used or not
   useDynamic: true, // specifies using dynamic mode or not
-  useParkPosition: true, // specifies to use park position at the end of the program
   useTimeStamp: false, // specifies to output time stamp
-  writeCoolantCommands: false // en/disable coolant code output for the entire program
+  writeCoolantCommands: false, // en/disable coolant code output for the entire program
+  useEulerAngles: false // specifies to use Euler Angles or machine angles for indexing
 };
 
 var mFormat = createFormat({prefix:"M", width:2, zeropad:true, decimals:1});
@@ -138,8 +139,8 @@ function writeComment(text) {
 function onOpen() {
 
   if (true) { // note: setup your machine here
-    var aAxis = createAxis({coordinate:0, table:true, axis:[-1, 0, 0], range:[-100.001, 0.001], preference:-1});
-    var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, -1], range:[-360, 360], cyclic:true, preference:0});
+    var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[0, 100.001], preference:0});
+    var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, 1], range:[0, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis, cAxis);
 
     setMachineConfiguration(machineConfiguration);
@@ -300,13 +301,12 @@ function writeProgramHeader() {
     dialogsDeclaration.push(dropDownDialog);
   }
   if (!is3D() || machineConfiguration.isMultiAxisConfiguration()) {
-    submacrosDeclaration.push("Initposition");
-    submacrosDeclaration.push("Endmacro");
+    // submacrosDeclaration.push("Initposition");
+    // submacrosDeclaration.push("Endmacro");
   }
 
-  submacrosDeclaration.push("Retractzmax");
-  variablesDeclaration.push("Curr_zpno");
-  variablesDeclaration.push("Zpos");
+  // variablesDeclaration.push("Curr_zpno");
+  // variablesDeclaration.push("Zpos");
 
   if (containsProbingOperations) {
     variablesDeclaration.push("Xvalue1");
@@ -326,15 +326,13 @@ function writeProgramHeader() {
   writeln("");
 
   if (!is3D() || machineConfiguration.isMultiAxisConfiguration()) {
-    writeBlock("_exit Endmacro;");
-    writeln("");
+    // writeBlock("_exit Endmacro;");
+    // writeln("");
   }
 
   if (!is3D() || machineConfiguration.isMultiAxisConfiguration()) {
-    createEndmacro();
+    // createEndmacro();
   }
-
-  createRetractMacro();
 }
 
 function writeMainProgram() {
@@ -438,40 +436,6 @@ function writeMainProgram() {
 
     writeBlock(translate("Submacro") + " " + sectionName + ";");
   }
-}
-
-function writeWorkpiece() {
-  var workpiece = getWorkpiece();
-  var delta = Vector.diff(workpiece.upper, workpiece.lower);
-
-  writeBlock("; !" + translate("Workpiece dimensions") + ":!");
-  writeBlock(
-    "; !min:     X: " + workpieceFormat.format(workpiece.lower.x) + ";" +
-    " Y: " + workpieceFormat.format(workpiece.lower.y) + ";" +
-    " Z: " + workpieceFormat.format(workpiece.lower.z) + "!"
-  );
-  writeBlock(
-    "; !max:     X: " + workpieceFormat.format(workpiece.upper.x) + ";" +
-    " Y: " + workpieceFormat.format(workpiece.upper.y) + ";" +
-    " Z: " + workpieceFormat.format(workpiece.upper.z) + "!"
-  );
-  writeBlock(
-    "; !" + translate("Part size") + " X: " + workpieceFormat.format(delta.x) + ";" +
-    " Y: " + workpieceFormat.format(delta.y) + ";" +
-    " Z: " + workpieceFormat.format(delta.z) + "!"
-  );
-
-  // insert maximum deep of the hole program
-
-  writeBlock(
-    "Wdef " +
-    xyzFormat.format(delta.getX()) + ", " +
-    xyzFormat.format(delta.getY()) + ", " +
-    xyzFormat.format(delta.getZ()) + ", " +
-    xyzFormat.format(workpiece.lower.x) + ", " +
-    xyzFormat.format(workpiece.lower.y) + ", " +
-    xyzFormat.format(workpiece.upper.z) + ", 0;"
-  );
 }
 
 function onComment(message) {
@@ -673,7 +637,7 @@ function onRewindMachine() {
   writeComment("REWIND");
 }
 
-function setWorkPlane(abc) {
+function setWorkPlane(abc, turn) {
   forceWorkPlane(); // always need the new workPlane
 
   if (!machineConfiguration.isMultiAxisConfiguration()) {
@@ -689,22 +653,27 @@ function setWorkPlane(abc) {
 
   gMotionModal.reset();
   
-  
-  // Schwenken st, xs, ys, zs, wz, vr;;
-  var st = 1; // 0 = off 1 = on
-  var xs = abcFormat.format(abc.z);
+  var st = turn ? 1 : 0;
+  // move origin
+  var initialPosition = getFramePosition((currentSection.getInitialPosition()));
+  var xv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.x : currentSection.workOrigin.x) : xyzFormat.format(0);
+  var yv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.y : currentSection.workOrigin.y) : xyzFormat.format(0);
+  var zv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.z : currentSection.workOrigin.z) : xyzFormat.format(0);
+      
+  // rotate workplane and axis
+  var xs = abcFormat.format(abc.x);
   var ys = abcFormat.format(abc.y);
-  var zs = abcFormat.format(abc.x);
-  var wz = 0; // 0 = indexing with retract 1= indexing with moving tool 2 = coordinate system rotation only
+  var zs = abcFormat.format(abc.z);
+  var wz = turn ? 0 : 2; // 0 = indexing with retract 1= indexing with moving tool 2 = coordinate system rotation only
   var vr = feedFormat.format(10000); // feed for indexing
-  writeBlock("Schwenken " +
-    st + ", " +
-    xs + ", " +
-    ys + ", " +
-    zs + ", " +
-    wz + ", " +
-    vr + ";"
-  );
+  
+  if (turn) {
+    writeBlock("Verschieben " + st + ", " + xv + ", " + yv + ", " + zv + ";");
+    writeBlock("Schwenken " + st + ", " + xs + ", " + ys + ", " + zs + ", " + wz + ", " + vr + ";");
+  } else {
+    writeBlock("Schwenken " + st + ", " + xs + ", " + ys + ", " + zs + ", " + wz + ", " + vr + ";");
+    writeBlock("Verschieben " + st + ", " + xv + ", " + yv + ", " + zv + ";");
+  }
 
   currentWorkPlaneABC = abc;
 }
@@ -767,20 +736,10 @@ function getWorkPlaneMachineABC(workPlane) {
   return abc;
 }
 
-function createRetractMacro() {
-  writeBlock("(");
-  writeBlock("Curr_zpno = Zeromemnr;");
-  writeBlock(translate("Zeromem") + " 0;");
-  writeBlock("Zpos = - Wzl - 10;");
-  writeBlock("Axyz 1, Xp, Yp, Zpos, 0, 0;");
-  writeBlock(translate("Zeromem") + " Curr_zpno;");
-  writeBlock(") Retractzmax;");
-}
-
-function createEndmacro() {
-  writeBlock("(");
-  writeBlock(") Endmacro;");
-}
+// function createEndmacro() {
+  // writeBlock("(");
+  // writeBlock(") Endmacro;");
+// }
 
 function isProbeOperation(section) {
   return section.hasParameter("operation-strategy") && (section.getParameter("operation-strategy") == "probe");
@@ -801,18 +760,20 @@ function onSection() {
     !isSameDirection(getPreviousSection().getGlobalFinalToolAxis(), currentSection.getGlobalInitialToolAxis());
 
   writeBlock("(");
+/*
   if (isProbeOperation(currentSection)) {
     writeBlock("T3d 9, 0, 1, 15, 17, 10, 10, 10, 10, 10, 10, 0;"); // enable probe
     writeBlock(translate("Rpm") + " 0, 30, 0, 30;");
   } else {
     writeBlock("T3d 0, 0, 1, 15, 17, 10, 10, 10, 10, 10, 10, 0;"); // disable probe
   }
+*/
 
   if (insertToolCall || newWorkOffset || newWorkPlane) {
 
     // retract to safe plane
     retracted = true;
-    writeBlock(translate("Submacro") + " Retractzmax;");
+    writeBlock("Wzrueckzug");
     forceXYZ();
   }
 
@@ -857,28 +818,19 @@ function onSection() {
     if (currentSection.isMultiAxis()) {
       forceWorkPlane();
       cancelTransformation();
-      var abc = currentSection.getInitialToolAxisABC();
-      var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(abc.x) : "a6p");
-      var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(abc.y) : "b6p");
-      var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(abc.z) : "c6p");
       if (!retracted) {
-        writeBlock(translate("Submacro") + " Retractzmax;");
+        writeBlock("Wzrueckzug");
       }
-      writeBlock("Axyzabc 1, " +
-        xOutput.format(currentSection.getInitialPosition().x) + ", " +
-        yOutput.format(currentSection.getInitialPosition().y) + ", " +
-        "z6p" + ", " +
-        a + ", " +
-        b + ", " +
-        c + ";"
-      );
     } else {
-      var eulerXYZ = currentSection.workPlane.getTransposed().eulerZYX_R;
-      abc = new Vector(-eulerXYZ.x, -eulerXYZ.y, -eulerXYZ.z);
-      cancelTransformation();
-      // var abc = new Vector(0, 0, 0);
-      // abc = getWorkPlaneMachineABC(currentSection.workPlane);
-      setWorkPlane(abc);
+      if (properties.useEulerAngles) {
+        var eulerXYZ = currentSection.workPlane.getTransposed().eulerZYX_R;
+        var abc = new Vector(-eulerXYZ.x, -eulerXYZ.y, -eulerXYZ.z);
+      // cancelTransformation();
+      } else {
+        var abc = new Vector(0, 0, 0);
+        abc = getWorkPlaneMachineABC(currentSection.workPlane);
+      }
+      setWorkPlane(abc, true);
     }
   } else { // pure 3D
     var remaining = currentSection.workPlane;
@@ -916,41 +868,24 @@ function onSection() {
   var initialPosition = getFramePosition(currentSection.getInitialPosition());
   if (!retracted) {
     if (getCurrentPosition().z < initialPosition.z) {
-      writeBlock(translate("Submacro") + " Retractzmax;");
+      writeBlock("Wzrueckzug");
     }
-  }
-
-  if (currentSection.isMultiAxis() && (currentSection.getOptimizedTCPMode() == 0)) {
-    writeBlock("rtcp 1;");
   }
 
   if (currentSection.isMultiAxis()) {
     var abc = currentSection.getInitialToolAxisABC();
-    var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(abc.x) : "a6p");
-    var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(abc.y) : "b6p");
-    var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(abc.z) : "c6p");
-
-      if (!retracted) {
-        writeBlock(translate("Submacro") + " Retractzmax;");
-      }
-      writeBlock("Axyzabc 1, " +
-        xOutput.format(initialPosition.x) + ", " +
-        yOutput.format(initialPosition.y) + ", " +
-        "z6p" + ", " +
-        a + ", " +
-        b + ", " +
-        c + ";"
-      );
-      writeBlock("Axyzabc 1, " +
-        xOutput.format(initialPosition.x) + ", " +
-        yOutput.format(initialPosition.y) + ", " +
-        zOutput.format(initialPosition.z) + ", " +
-        a + ", " +
-        b + ", " +
-        c + ";"
-      );
-    // writeBlock(gMotionModal.format(1), xOutput.format(initialPosition.x) + ", " + yOutput.format(initialPosition.y) + ", " + "z6p"  + ", 0,0;");
-    // writeBlock(gMotionModal.format(1), xOutput.format(initialPosition.x) + ", " + yOutput.format(initialPosition.y) + ", " + zOutput.format(initialPosition.z) + ",0,0;");
+    setRotation(machineConfiguration.getRemainingOrientation(abc, currentSection.workPlane));
+    writeComment("Prepositioning start");
+    setWorkPlane(abc, true);
+    writeBlock(gMotionModal.format(1), xyzFormat.format(0) + ", " + xyzFormat.format(0) + ", " + "z6p" + ";");
+    writeBlock(gMotionModal.format(1), "x6p" + ", " + "y6p" + ", " + xyzFormat.format(0) + ";");
+    setWorkPlane(new Vector(0, 0, 0), false);
+    writeComment("Prepositioning end");
+    cancelTransformation();
+    forceWorkPlane();
+    if (currentSection.getOptimizedTCPMode() == 0) {
+      writeBlock("Rtcp 1;");
+    }
   } else {
     writeBlock(gMotionModal.format(1), xOutput.format(initialPosition.x) + ", " + yOutput.format(initialPosition.y) + ", " + "z6p"  + ", 0, 0;");
     writeBlock(gMotionModal.format(1), xOutput.format(initialPosition.x) + ", " + yOutput.format(initialPosition.y) + ", " + zOutput.format(initialPosition.z) + ", 0, 0;");
@@ -1819,7 +1754,7 @@ function onCommand(command) {
 
 function onSectionEnd() {
   if (currentSection.isMultiAxis() && (currentSection.getOptimizedTCPMode() == 0)) {
-    writeBlock("rtcp 0;");
+    writeBlock("Rtcp 0;");
   }
 
   if (((getCurrentSectionId() + 1) >= getNumberOfSections()) ||
@@ -1829,6 +1764,11 @@ function onSectionEnd() {
   if (isProbeOperation(currentSection)) {
     writeBlock(translate("Rpm") + " 1, 30, 0, 30;");
   }
+
+  writeBlock("Wzrueckzug"); // optional
+  setWorkPlane(new Vector(0, 0, 0), false); // optional
+  forceWorkPlane(); // optional
+
   if (!isLastSection() && properties.showOperationDialog) {
     writeBlock("$Message = \"Start next Operation\";");
     writeBlock(translate("Condition") + " optional_stop, 0, 1, 0, 9999;");
@@ -1870,10 +1810,9 @@ function onClose() {
     }
   }
   writeToolTable();
-  writeWorkpiece();
 
   if (!is3D()) {
-    writeBlock(translate("Submacro") + " Initposition;");
+    // writeBlock(translate("Submacro") + " Initposition;");
   }
   //write jump to start operation
   if (properties.showOperationDialog) {
@@ -1885,17 +1824,12 @@ function onClose() {
   // onCommand(COMMAND_COOLANT_OFF);
 
   if (!is3D()) {
-    writeBlock(translate("Submacro") + " Endmacro;");
+    // writeBlock(translate("Submacro") + " Endmacro;");
   }
 
-  writeBlock(translate("Submacro") + " Retractzmax;");
+  writeBlock("Wzrueckzug");
 
-  setWorkPlane(new Vector(0, 0, 0)); // reset working plane
-
-  if (properties.useParkPosition) {
-    writeBlock("Park;");
-  } else {
-    writeBlock(translate("Submacro") + " Retractzmax;");
-    zOutput.reset();
-  }
+  // setWorkPlane(new Vector(0, 0, 0), false); // reset working plane
+  writeBlock("Clamping_position");
+  zOutput.reset();
 }
