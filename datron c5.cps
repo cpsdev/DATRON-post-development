@@ -44,8 +44,7 @@ properties = {
   useSmoothing: true, // specifies if smoothing should be used or not
   useDynamic: true, // specifies using dynamic mode or not
   useTimeStamp: false, // specifies to output time stamp
-  writeCoolantCommands: false, // en/disable coolant code output for the entire program
-  useEulerAngles: false // specifies to use Euler Angles or machine angles for indexing
+  writeCoolantCommands: false // en/disable coolant code output for the entire program
 };
 
 var mFormat = createFormat({prefix:"M", width:2, zeropad:true, decimals:1});
@@ -416,6 +415,7 @@ function writeMainProgram() {
       }
     }
 
+/*
     // wcs
     var workOffset;
     if (!is3D()) {
@@ -433,7 +433,7 @@ function writeMainProgram() {
         }
       }
     }
-
+*/
     writeBlock(translate("Submacro") + " " + sectionName + ";");
   }
 }
@@ -736,11 +736,6 @@ function getWorkPlaneMachineABC(workPlane) {
   return abc;
 }
 
-// function createEndmacro() {
-  // writeBlock("(");
-  // writeBlock(") Endmacro;");
-// }
-
 function isProbeOperation(section) {
   return section.hasParameter("operation-strategy") && (section.getParameter("operation-strategy") == "probe");
 }
@@ -822,14 +817,8 @@ function onSection() {
         writeBlock("Wzrueckzug");
       }
     } else {
-      if (properties.useEulerAngles) {
-        var eulerXYZ = currentSection.workPlane.getTransposed().eulerZYX_R;
-        var abc = new Vector(-eulerXYZ.x, -eulerXYZ.y, -eulerXYZ.z);
-      // cancelTransformation();
-      } else {
-        var abc = new Vector(0, 0, 0);
-        abc = getWorkPlaneMachineABC(currentSection.workPlane);
-      }
+      var eulerXYZ = currentSection.workPlane.getTransposed().eulerZYX_R;
+      var abc = new Vector(-eulerXYZ.x, -eulerXYZ.y, -eulerXYZ.z);
       setWorkPlane(abc, true);
     }
   } else { // pure 3D
@@ -898,7 +887,7 @@ function onSection() {
     if (!insertToolCall &&
         activeMovements &&
         (getCurrentSectionId() > 0) &&
-        (getPreviousSection().getPatternId() == currentSection.getPatternId())) {
+        (getPreviousSection().getPatternId() == currentSection.getPatternId()) && (currentSection.getPatternId() != 0)) {
       // use the current feeds
     } else {
       initializeActiveFeeds(currentSection);
