@@ -210,9 +210,9 @@ function writeProgramHeader() {
   var time = timeFormat.format(nowHour) + ":" + timeFormat.format(nowMin);
 
   if (properties.useTimeStamp) {
-    writeBlock("!Makro file ; generated at " + date + " - " + time + " V9.09F!");
+    writeBlock("!Makro file ; generated at " + date + " - " + time + " V9.85D!");
   } else {
-    writeBlock("!Makro file ; V9.09F!");
+    writeBlock("!Makro file ; V9.85D!");
   }
   if (programComment) {
     writeBlock("!" + formatComment(programComment) + "!");
@@ -850,7 +850,7 @@ function onSection() {
       t = getParameter("operation:tolerance");
     }
   }
-  if (properties.useSmoothing && !currentSection.isMultiAxis() && !isProbeOperation(currentSection)) {
+  if (properties.useSmoothing && !isProbeOperation(currentSection)) {
     writeBlock(translate("Contour_smoothing") + " 1, " + xyzFormat.format(t * 1.2) + ", 0.1, 110, 1;");
   }
 
