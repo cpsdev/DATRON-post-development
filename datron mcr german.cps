@@ -79,6 +79,8 @@ var gMotionModal = createModal({prefix:"Axyz ", force:true, suffix:","}, xyzForm
 var language = "de"; // supported languages are: "en", "de"
 var useRTCPSimu = true; // use TCP "light" or not
 var useInverseTime = false; // enable inverseTime output here if needed
+var useTimeFeed = true; //enables the time feed option to get feed as timme for an dinstance
+
 
 // collected state
 var currentWorkOffset;
@@ -302,7 +304,15 @@ function writeComment(text) {
 
 function onOpen() {
   if (properties._got4thAxis || properties._got5thAxis) { // note: setup your machine here
-    var aAxis = createAxis({coordinate:properties._got5thAxis ? 0 : 1, table:true, axis:[properties._4thAxisRotatesAroundX ? -1 : 0, properties._4thAxisRotatesAroundX ? 0 : -1, 0], range:[properties._got5thAxis ? -100 : -360, properties._got5thAxis ? 0 : 360], preference:-1});
+    
+    var aAxis
+    if(properties._got4thAxis && properties._got5thAxis){
+        aAxis = createAxis({coordinate:properties._got5thAxis ? 0 : 1, table:true, axis:[properties._4thAxisRotatesAroundX ? -1 : 0, properties._4thAxisRotatesAroundX ? 0 : -1, 0], range:[properties._got5thAxis ? -100 : -360, properties._got5thAxis ? 0 : 360], preference:-1}) 
+    } else {
+         aAxis = createAxis({coordinate:1, table:true, axis:[properties._4thAxisRotatesAroundX ? 1 : 0, properties._4thAxisRotatesAroundX ? 0 : 1, 0], range:[-360, 360], preference:1})
+    
+    } 
+   
     var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, -1], range:[-360, 360], cyclic:true, preference:0});
     
     if (properties._got4thAxis && !properties._got5thAxis) {
@@ -670,12 +680,12 @@ function writeMainProgram() {
 
     // wcs
     var workOffset;
-    if (!is3D()) {
-      workOffset = 19;
-      if (workOffset != currentWorkOffset) {
-        writeBlock("Position " + workOffset + ", 2;");
-        currentWorkOffset = workOffset;
-      }
+    if (!is3D()) {    
+      // workOffset = properties._got4thAxis && properties._got5thAxis ? 19 : 21;
+      // if (workOffset != currentWorkOffset) {
+        // writeBlock("Position " + workOffset + ", 2;");
+        // currentWorkOffset = workOffset;
+      // }
     } else {
       workOffset = section.workOffset;
       if (workOffset != 0 && workOffset < 41) {
@@ -944,8 +954,8 @@ function setWorkPlane(abc) {
     writeBlock("C_temp = " + (machineConfiguration.isMachineCoordinate(2) ? abcFormat.format(abc.z) : "c6p") + " - C_delta;");
     writeBlock("Axyzabc 1, x6p, y6p, z6p, A_temp, B_temp, C_temp;");
   }
-
-  if (machineConfiguration.isMultiAxisConfiguration() && !currentSection.isMultiAxis()) {
+  //writeBlock("Axyzabc 1, x6p, y6p, z6p, a6p, " + (machineConfiguration.isMachineCoordinate(1) ? abcFormat.format(abc.y) : "b6p") + ", c6p;");
+  if (machineConfiguration.isMultiAxisConfiguration() && !currentSection.isMultiAxis()) {    
     writeBlock(translate("Submacro") + " Transformoffset 0, ",
     abcFormat.format(abc.x) +", ",
     abcFormat.format(abc.y) +", ",
@@ -1015,25 +1025,26 @@ function getWorkPlaneMachineABC(workPlane) {
 }
 
 function createRtcpSimuSubmacro() {
-  // error(localize("RTCP is not supported."));
-  // return;
 
   writeBlock("(");
   if (useInverseTime) {
     writeBlock(translate("Feed") + " timefeed" + (Array(4).join(", timefeed")) + ";");
   }
+  
   writeBlock("X_temp = X_delta;");
   writeBlock("Y_temp = Y_delta;");
   writeBlock("Z_temp = Z_delta;");
 
-  writeBlock(";!Rotation around C!;");
-  writeBlock("X_trans = X_temp * Cos ( C ) - Y_temp * Sin ( C );");
-  writeBlock("Y_trans = X_temp * Sin ( C ) + Y_temp * Cos ( C );");
-  writeBlock("Z_trans = Z_temp;");
-  writeBlock("X_temp = X_trans;");
-  writeBlock("Y_temp = Y_trans;");
-  writeBlock("Z_temp = Z_trans;");
-
+  if(properties._got5thAxis){
+    writeBlock(";!Rotation around C!;");
+    writeBlock("X_trans = X_temp * Cos ( C ) - Y_temp * Sin ( C );");
+    writeBlock("Y_trans = X_temp * Sin ( C ) + Y_temp * Cos ( C );");
+    writeBlock("Z_trans = Z_temp;");
+    writeBlock("X_temp = X_trans;");
+    writeBlock("Y_temp = Y_trans;");
+    writeBlock("Z_temp = Z_trans;");
+  }
+  
   writeBlock(";!Rotation around A!;");
   writeBlock("X_trans = X_temp;");
   writeBlock("Y_trans = Y_temp * Cos ( A ) - Z_temp * Sin ( A );");
@@ -1057,16 +1068,26 @@ function createRtcpSimuSubmacro() {
 
   writeBlock("A_temp =  A - A_delta;");
   writeBlock("B_temp = B - B_delta;");
-  writeBlock("C_temp = C - C_delta;");
-
-  writeBlock("Axyzabc Israpid, X_new, Y_new, Z_new, A_temp, B_temp, C_temp;");
+  writeBlock("C_temp = C - C_delta;");  
+  
+  if(properties._got5thAxis){
+     writeBlock("Axyzabc Israpid, X_new, Y_new, Z_new, A_temp, 0, C_temp;");
+  } else {
+     writeBlock("Axyzabc Israpid, X_new, Y_new, Z_new, 0, A_temp, 0;");
+  }
+     
   writeBlock(") Transformpath;");
 
 }
 
 function createRtcpTransformationSubmacro() {
   writeBlock("(");
-  writeBlock("Position 19, 2;");
+  if(properties._got5thAxis){
+     writeBlock("Position 19, 2;"); 
+  } else if (properties._got4thAxis && properties._got5thAxis){
+    writeBlock("Position 21, 2;"); 
+  }
+  
   writeBlock("X_temp = X_delta;");
   writeBlock("Y_temp = Y_delta;");
   writeBlock("Z_temp = Z_delta;");
@@ -1113,7 +1134,11 @@ function createPositionInitSubmacro() {
   writeBlock("A_initial_pos = A6p;");
   writeBlock("B_initial_pos = B6p;");
   writeBlock("C_initial_pos = C6p;");
-  writeBlock("Position 19, 2;");
+  if(properties._got5thAxis){
+     writeBlock("Position 19, 2;"); 
+  } else if (properties._got4thAxis && properties._got5thAxis){
+    writeBlock("Position 21, 2;"); 
+  }
   writeBlock("X_delta = X_initial_pos - X6p;");
   writeBlock("Y_delta = Y_initial_pos - Y6p;");
   writeBlock("Z_delta = Z_initial_pos - Z6p;");
@@ -1276,7 +1301,11 @@ function onSection() {
     var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(abc.z) : "c6p");
 
     if (useRTCPSimu && machineConfiguration.isMultiAxisConfiguration()) {
-      writeBlock("Position 19, 2;");
+      if(properties._got5thAxis){
+         writeBlock("Position 19, 2;"); 
+      } else if (properties._got4thAxis && properties._got5thAxis){
+        writeBlock("Position 21, 2;"); 
+      }
       writeBlock(translate("Submacro") + " Retractzmax;");
       writeBlock(translate("Submacro") + " Transformpath 0, 1, 1, " +
         xOutput.format(initialPosition.x) + ", " +
@@ -2280,7 +2309,7 @@ function onClose() {
   writeWorkpiece();
 
   if (!is3D()) {
-    writeBlock(translate("Submacro") + " Initposition;");
+   writeBlock(translate("Submacro") + " Initposition;");
   }
   //write jump to start operation
   if (properties.showOperationDialog) {
