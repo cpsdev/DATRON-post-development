@@ -1050,18 +1050,11 @@ function onSection() {
       var retract = section.getParameter("retract");
       var stock = section.getParameter("stock");
       var pitch = section.getParameter("pitch");
-      var finishing = section.getParameter("stepover");
 
       writeBlock("nominalDiameter=" + xyzFormat.format(diameter));
       sequenceParamter.push("nominalDiameter=nominalDiameter");
       writeBlock("pitch=" + xyzFormat.format(pitch));
       sequenceParamter.push("pitch=pitch");
-      if(finishing){
-        writeBlock("finishing=" + xyzFormat.format(finishing));
-        sequenceParamter.push("finishing=finishing");  
-      } else {
-        sequenceParamter.push("finishing=0"); 
-      }
       // writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
       // sequenceParamter.push('threadName=threadName');
       // writeBlock("threading = " + section.getParameter("threading"));
@@ -1077,8 +1070,7 @@ function onSection() {
       // // sequenceParamter.push("deburring=ThreadMillingDeburring.NoDeburring");
       // // sequenceParamter.push("insideOutside=ThreadMillingSide.Inside");
       // // sequenceParamter.push("direction=ThreadMillingDirection.RightHandThread");
-      
-      
+      // sequenceParamter.push("finishing=0.1");
       // writeBlock("direction = " + dimensionFormat.format(section.getParameter("direction")));
       // sequenceParamter.push("direction=direction");
       // writeBlock("repeatPass = " + dimensionFormat.format(section.getParameter("repeatPass")));
@@ -1633,7 +1625,7 @@ function threadMilling(cycle) {
   // threadString.push("deburring=ThreadMillingDeburring.NoDeburring");
   // threadString.push("insideOutside=ThreadMillingSide.Inside");
   // threadString.push("direction=ThreadMillingDirection.RightHandThread");
-  threadString.push("finishing=finishing");
+  // threadString.push("finishing=0.1");
   writeBlock(threadString.join(" "));
 }
 
