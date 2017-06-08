@@ -259,7 +259,7 @@ function writeProgramHeader() {
     dialogsDeclaration.push("_feld optional_stop, 1, 0, 0, 0, 1, 2, 0," + " \"" + "optional_stop" + "\"" + "," + " \"" + "optional_stop" + "\"");
   }
 
-  //write variables declaration
+  // Write variables declaration
   var tools = getToolTable();
   for (var i = 0; i < tools.getNumberOfTools(); ++i) {
     var tool = tools.getTool(i);
@@ -347,7 +347,7 @@ function writeMainProgram() {
     var maskName = formatVariable("Op_" + Description);
 
     writeComment("##########" + Description + "##########");
-    //writeBlock(translate("Condition") + " " + maskName + ", 0, 1, 0, " + sectionID + ";");
+    // writeBlock(translate("Condition") + " " + maskName + ", 0, 1, 0, " + sectionID + ";");
     writeBlock(translate("Label") + " " + sectionID + ";");
 
     var tool = section.getTool();
@@ -659,7 +659,7 @@ function setWorkPlane(abc, turn) {
   var xv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.x : currentSection.workOrigin.x) : xyzFormat.format(0);
   var yv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.y : currentSection.workOrigin.y) : xyzFormat.format(0);
   var zv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.z : currentSection.workOrigin.z) : xyzFormat.format(0);
-      
+  
   // rotate workplane and axis
   var xs = abcFormat.format(abc.x);
   var ys = abcFormat.format(abc.y);
@@ -812,17 +812,17 @@ function onSection() {
     if (!isSameDirection(remaining.forward, new Vector(0, 0, 1)) || currentSection.isMultiAxis()) {
       //error(localize("Tool orientation is not supported."));
       error(translate(
-         "\r\n________________________________________" +
-         "\r\n|              error                    |" +
-         "\r\n|                                       |" +
-         "\r\n| 4/5 axis operations detected.         |" +
-         "\r\n| You have to enable the property       |" +
-         "\r\n| got4thAxis or got5Axis,                |" +
-         "\r\n| otherwise you can only post           |" +
-         "\r\n| 3 Axis programs.                      |" +
-         "\r\n| If you still have issues,             |" +
-         "\r\n| please contact www.DATRON.com!        |" +
-         "\r\n|_______________________________________|\r\n"));
+        "\r\n________________________________________" +
+        "\r\n|              error                    |" +
+        "\r\n|                                       |" +
+        "\r\n| 4/5 axis operations detected.         |" +
+        "\r\n| You have to enable the property       |" +
+        "\r\n| got4thAxis or got5Axis,               |" +
+        "\r\n| otherwise you can only post           |" +
+        "\r\n| 3 Axis programs.                      |" +
+        "\r\n| If you still have issues,             |" +
+        "\r\n| please contact www.DATRON.com!        |" +
+        "\r\n|_______________________________________|\r\n"));
       return;
     }
     setRotation(remaining);
@@ -849,7 +849,6 @@ function onSection() {
 
   if (currentSection.isMultiAxis()) {
     var abc = currentSection.getInitialToolAxisABC();
-    setRotation(machineConfiguration.getRemainingOrientation(abc, currentSection.workPlane));
     writeComment("Prepositioning start");
     setWorkPlane(abc, true);
     writeBlock(gMotionModal.format(1), xyzFormat.format(0) + ", " + xyzFormat.format(0) + ", " + "z6p" + ";");
@@ -1401,17 +1400,17 @@ function mcrThreadMilling(cycle) {
   );
 }
 
-//Implement G93 command
+/** Implement G93 command. */
 function mcrSetInverseTimeFeed() {
   directWriteToCNC("G93");
 }
 
-//Implement G94 command
+/** Implement G94 command. */
 function mcrSetTimeFeed() {
   directWriteToCNC("G94");
 }
 
-//write a command to the cnc kernel without interpretation from the control DANGEROUS
+/** Write a command to the cnc kernel without interpretation from the control DANGEROUS. */
 function directWriteToCNC(command) {
   error(localize("Inverse Time feed is currently not supported."));
   return;
@@ -1531,8 +1530,8 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
   var c = (machineConfiguration.isMachineCoordinate(2) ? aOutput.format(_c) : "c6p");
   
   if (x || y || z || a || b || c) {
-      writeBlock(getFeed(feed));
-      writeBlock("Axyzabc 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ";");
+    writeBlock(getFeed(feed));
+    writeBlock("Axyzabc 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ";");
   } else if (f) {
     if (getNextRecord().isMotion()) { // try not to output feed without motion
       forceFeed(); // force feed on next line
@@ -1638,7 +1637,7 @@ function translate(text) {
          "\r\n|                                       |" +
          "\r\n| 4/5 axis operations detected.         |" +
          "\r\n| You have to enable the property       |" +
-         "\r\n| got4thAxis or got5Axis,                |" +
+         "\r\n| got4thAxis or got5Axis,               |" +
          "\r\n| otherwise you can only post           |" +
          "\r\n| 3 Axis programs.                      |" +
          "\r\n| If you still have issues,             |" +
@@ -1792,7 +1791,7 @@ function onClose() {
   }
   writeToolTable();
 
-  //write jump to start operation
+  // write jump to start operation
   if (properties.showOperationDialog) {
     writeBlock(translate("Condition") + " 0, 0, 0 , startOperation, startOperation;");
   }
