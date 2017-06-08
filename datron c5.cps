@@ -29,10 +29,10 @@ minimumChordLength = spatial(0.01, MM);
 minimumCircularRadius = spatial(0.01, MM);
 maximumCircularRadius = spatial(1000, MM);
 minimumCircularSweep = toRad(0.01);
-maximumCircularSweep = toRad(90); // avoid potential center calculation errors for CNC
+maximumCircularSweep = toRad(90);
 allowHelicalMoves = false;
 allowedCircularPlanes = (1 << PLANE_XY); // allow XY plane only
-mapWorkOrigin = true; // keep true per default, en/disable the mapping of the work origin
+mapWorkOrigin = false;
 
 // user-defined properties
 properties = {
@@ -634,7 +634,7 @@ function forceWorkPlane() {
 }
 
 function onRewindMachine() {
-  writeComment("REWIND");
+  writeComment("REWIND OF MACHINE AXIS");
 }
 
 function setWorkPlane(abc, turn) {
@@ -668,11 +668,11 @@ function setWorkPlane(abc, turn) {
   var vr = feedFormat.format(10000); // feed for indexing
   
   if (turn) {
-    writeBlock("Verschieben " + st + ", " + xv + ", " + yv + ", " + zv + ";");
-    writeBlock("Schwenken " + st + ", " + xs + ", " + ys + ", " + zs + ", " + wz + ", " + vr + ";");
+    writeBlock(translate("Shift") + " " + st + ", " + xv + ", " + yv + ", " + zv + ";");
+    writeBlock(translate("Tilt") + " " + st + ", " + xs + ", " + ys + ", " + zs + ", " + wz + ", " + vr + ";");
   } else {
-    writeBlock("Schwenken " + st + ", " + xs + ", " + ys + ", " + zs + ", " + wz + ", " + vr + ";");
-    writeBlock("Verschieben " + st + ", " + xv + ", " + yv + ", " + zv + ";");
+    writeBlock(translate("Tilt") + " " + st + ", " + xs + ", " + ys + ", " + zs + ", " + wz + ", " + vr + ";");
+    writeBlock(translate("Shift") + " " + st + ", " + xv + ", " + yv + ", " + zv + ";");
   }
 
   currentWorkPlaneABC = abc;
@@ -755,20 +755,11 @@ function onSection() {
     !isSameDirection(getPreviousSection().getGlobalFinalToolAxis(), currentSection.getGlobalInitialToolAxis());
 
   writeBlock("(");
-/*
-  if (isProbeOperation(currentSection)) {
-    writeBlock("T3d 9, 0, 1, 15, 17, 10, 10, 10, 10, 10, 10, 0;"); // enable probe
-    writeBlock(translate("Rpm") + " 0, 30, 0, 30;");
-  } else {
-    writeBlock("T3d 0, 0, 1, 15, 17, 10, 10, 10, 10, 10, 10, 0;"); // disable probe
-  }
-*/
 
   if (insertToolCall || newWorkOffset || newWorkPlane) {
-
     // retract to safe plane
     retracted = true;
-    writeBlock("Wzrueckzug");
+    writeBlock(translate("ToolRetraction") + ";");
     forceXYZ();
   }
 
@@ -798,11 +789,6 @@ function onSection() {
       error(localize("Spindle direction not supported."));
       return;
     }
-
-    //onCommand(COMMAND_START_CHIP_TRANSPORT);
-    if (!is3D() || machineConfiguration.isMultiAxisConfiguration()) {
-      // writeBlock(mFormat.format(xxx)); // shortest path traverse
-    }
   }
 
   forceXYZ();
@@ -814,7 +800,7 @@ function onSection() {
       forceWorkPlane();
       cancelTransformation();
       if (!retracted) {
-        writeBlock("Wzrueckzug");
+        writeBlock(translate("ToolRetraction") + ";");
       }
     } else {
       var eulerXYZ = currentSection.workPlane.getTransposed().eulerZYX_R;
@@ -857,7 +843,7 @@ function onSection() {
   var initialPosition = getFramePosition(currentSection.getInitialPosition());
   if (!retracted) {
     if (getCurrentPosition().z < initialPosition.z) {
-      writeBlock("Wzrueckzug");
+      writeBlock(translate("ToolRetraction") + ";");
     }
   }
 
@@ -1641,6 +1627,12 @@ function translate(text) {
       return "Zhmess";
     case "Rotation":
       return "Drehung";
+    case "ToolRetraction":
+      return "Wzrueckzug";
+    case "Shift":
+      return "Verschieben";
+    case "Tilt":
+      return "Schwenken";
     case "\r\n________________________________________" +
          "\r\n|              error                    |" +
          "\r\n|                                       |" +
@@ -1754,7 +1746,7 @@ function onSectionEnd() {
     writeBlock(translate("Rpm") + " 1, 30, 0, 30;");
   }
 
-  writeBlock("Wzrueckzug"); // optional
+  writeBlock(translate("ToolRetraction") + ";"); // optional
   setWorkPlane(new Vector(0, 0, 0), false); // optional
   forceWorkPlane(); // optional
 
@@ -1800,9 +1792,6 @@ function onClose() {
   }
   writeToolTable();
 
-  if (!is3D()) {
-    // writeBlock(translate("Submacro") + " Initposition;");
-  }
   //write jump to start operation
   if (properties.showOperationDialog) {
     writeBlock(translate("Condition") + " 0, 0, 0 , startOperation, startOperation;");
@@ -1810,13 +1799,8 @@ function onClose() {
   
   writeMainProgram();
   writeComment("###############################################");
-  // onCommand(COMMAND_COOLANT_OFF);
 
-  if (!is3D()) {
-    // writeBlock(translate("Submacro") + " Endmacro;");
-  }
-
-  writeBlock("Wzrueckzug");
+  writeBlock(translate("ToolRetraction") + ";");
 
   // setWorkPlane(new Vector(0, 0, 0), false); // reset working plane
   writeBlock("Clamping_position");
