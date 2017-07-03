@@ -269,10 +269,10 @@ function createToolDescriptionTable() {
         toolNameList.push(toolName);
         toolDescriptionArray.push(toolProgrammed);
       } else {
-         if (toolDescriptionArray.indexOf(toolProgrammed) == -1) {
-           error("\r\n#####################################\r\nOne ore more tools have the same name!\r\nPlease change the tool number to make the name unique.\r\n" + toolDescriptionArray.join("\r\n") + "\r\n\r\n" +
-           toolNameList.join("\r\n") + "#####################################\r\n");
-         }
+         // if (toolDescriptionArray.indexOf(toolProgrammed) == -1) {
+           // error("\r\n#####################################\r\nOne ore more tools have the same name!\r\nPlease change the tool number to make the name unique.\r\n" + toolDescriptionArray.join("\r\n") + "\r\n\r\n" +
+           // toolNameList.join("\r\n") + "#####################################\r\n");
+         // }
       }
     }
   }
@@ -977,7 +977,7 @@ function onSection() {
 
   if (!isProbeOperation()) {
     // set rpm
-    if (tool.spindleRPM < 6000) {
+    if (tool.spindleRPM < 6000 && tool.spindleRPM > 0) {
       tool.spindleRPM = 6000;
     }
 
@@ -1165,7 +1165,7 @@ function onSection() {
   }
 
   if (!isProbeOperation()) {
-    writeBlock("Spindle On");
+		tool.spindleRPM > 100 ? writeBlock("Spindle On") : writeBlock("Spindle Off");
 
     var operationTolerance = tolerance;
     if (hasParameter("operation:tolerance")) {
