@@ -183,7 +183,7 @@ function onOpen() {
     optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
   }
 
-  if (!machineConfiguration.isMachineCoordinate(0)) {
+  if (!machineConfiguration.isMachineCoordinate(0)) {			
     aOutput.disable();
   }
   if (!machineConfiguration.isMachineCoordinate(1)) {
@@ -452,7 +452,9 @@ function writeProgramHeader() {
     var numberOfSections = getNumberOfSections();
     for (var i = 0; i < numberOfSections; ++i) {
       var section = getSection(i);
-      sequences.push(getSequenceName(section));
+			if (!isProbeOperation(section)){
+				sequences.push(getSequenceName(section));
+			}      
     }
 
     if (properties.useExternalSequencesFiles) {
@@ -803,15 +805,7 @@ function setWorkPlane(abc) {
   }
 
   forceWorkPlane(); // always need the new workPlane
-
-/*
-  if (currentWorkPlaneABC != undefined) {
-    abcFormat.areDifferent(abc.x, currentWorkPlaneABC.x) ||
-    abcFormat.areDifferent(abc.y, currentWorkPlaneABC.y) ||
-    abcFormat.areDifferent(abc.z, currentWorkPlaneABC.z))) {
-    return; // no change
-  }
-*/
+	forceABC();
 
   writeBlock("MoveToSafetyPosition");
   writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
@@ -875,11 +869,11 @@ function getWorkPlaneMachineABC(workPlane) {
 var isInsideSection = false;
 
 function onSection() {
-  if (isProbeOperation(currentSection)) {
-    // TAG: remove once probing is supported properly, waiting for Datron
-    error(localize("Probing is not supported for now."));
-    return;
-  }
+  // if (isProbeOperation(currentSection)) {
+    // // TAG: remove once probing is supported properly, waiting for Datron
+    // error(localize("Probing is not supported for now."));
+    // return;
+  // }
 
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
@@ -928,7 +922,8 @@ function onSection() {
       writeBlock("MoveToSafetyPosition");
       writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
     } else {
-      var abc = getWorkPlaneMachineABC(currentSection.workPlane);
+			forceWorkPlane();
+      var abc = getWorkPlaneMachineABC(currentSection.workPlane);			      
       setWorkPlane(abc);
     }
   } else {
@@ -1134,7 +1129,7 @@ function onSection() {
     }
   }
 
-  if (properties.useSequences) {
+  if (properties.useSequences && !isProbeOperation(section)) {
     // call sequence
     if (properties.useParametricFeed && (!useDatronFeedCommand) && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
       activeFeeds = initializeActiveFeeds(section);
@@ -1671,7 +1666,7 @@ function dump(name, _arguments) {
 function onSectionEnd() {
   writeBlock("ToolCompensation Off");
 
-  if (properties.useSequences) {
+  if (properties.useSequences && !isProbeOperation(currentSection)) {
     if (!properties.useExternalSequencesFiles) {
       sequenceFile.append(getRedirectionBuffer());
     }
