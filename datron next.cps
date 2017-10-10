@@ -49,6 +49,22 @@ properties = {
   got4thAxis: false // specifies if the machine has a rotational 4th axis
 };
 
+// user-defined property definitions
+propertyDefinitions = {
+  writeMachine: {title:"Write machine", description:"Output the machine settings in the header of the code.", group:0, type:"boolean"},
+  showNotes: {title:"Show notes", description:"Writes operation notes as comments in the outputted code.", type:"boolean"},
+  useSmoothing: {title:"Use smoothing", description:"Specifies if smoothing should be used or not.", type:"boolean"},
+  useDynamic: {title:"Dynamic mode", description:"Specifies the using of dynamic mode or not.", type:"boolean"},
+  useParkPosition: {title: "Park at end of program", description:"Enable to use the park position at end of program.", type:"boolean"},
+  writeToolTable: {title:"Write tool table", description:"Write a tool table containing geometric tool information.", group:0, type:"boolean"},
+  useSequences: {title:"Use sequences", description:"If enables, sequences are used in the output format on large files.", type:"boolean"},
+  useExternalSequencesFiles: {title:"Use external sequence files", description:"If enabled, an external sequence file is created for each operation.", type:"boolean"},
+  writeCoolantCommands: {title:"Write coolant commands", description:"Enable/disable coolant code outputs for the entire program.", type:"boolean"},
+  useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
+  waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop is outputted to pause after each operation.", type:"boolean"},
+  got4thAxis: {title:"Has 4th axis", description:"Enable if the machine is equipped with a 4-axis.", type:"boolean"}
+};
+
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
 var mFormat = createFormat({prefix:"M", width:2, zeropad:true, decimals:1});
 
@@ -178,12 +194,12 @@ function onOpen() {
     machineConfiguration = new MachineConfiguration(aAxis);
     machineConfiguration.setVendor("DATRON");
     machineConfiguration.setModel("NEO with A Axis");
-    machineConfiguration.setDescription("DATRON NEXT Control  with additional A-Axis");
+    machineConfiguration.setDescription("DATRON NEXT Control with additional A-Axis");
     setMachineConfiguration(machineConfiguration);
     optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
   }
 
-  if (!machineConfiguration.isMachineCoordinate(0)) {			
+  if (!machineConfiguration.isMachineCoordinate(0)) {
     aOutput.disable();
   }
   if (!machineConfiguration.isMachineCoordinate(1)) {
@@ -452,9 +468,9 @@ function writeProgramHeader() {
     var numberOfSections = getNumberOfSections();
     for (var i = 0; i < numberOfSections; ++i) {
       var section = getSection(i);
-			if (!isProbeOperation(section)){
+			if (!isProbeOperation(section)) {
 				sequences.push(getSequenceName(section));
-			}      
+			}
     }
 
     if (properties.useExternalSequencesFiles) {
@@ -877,19 +893,18 @@ function onSection() {
 
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
-  var section = currentSection;
   var tool = currentSection.getTool();
 
   if (!isProbeOperation()) {
-    writeComment("Operation Time: " + formatCycleTime(section.getCycleTime()));
+    writeComment("Operation Time: " + formatCycleTime(currentSection.getCycleTime()));
   }
 
   var showToolZMin = true;
   if (showToolZMin) {
     if (is3D()) {
-      var zRange = section.getGlobalZRange();
+      var zRange = currentSection.getGlobalZRange();
       var number = tool.number;
-      zRange.expandToRange(section.getGlobalZRange());
+      zRange.expandToRange(currentSection.getGlobalZRange());
       writeComment("ZMIN = " + xyzFormat.format(zRange.getMinimum()));
     }
   }
@@ -909,7 +924,31 @@ function onSection() {
 
   // this control structure allows us to show the user the operation from the CAM application as a block of within the whole program similarly to Heidenhain structure.
   writeBlock("BeginBlock name=" + "\"" + getOperationDescription(currentSection) + "\"");
+  var operationTolerance = tolerance;
+  if (hasParameter("operation:tolerance")) {
+    if (operationTolerance < getParameter("operation:tolerance")) {
+      operationTolerance = getParameter("operation:tolerance");
+    }
+  }
 
+  if (properties.useSmoothing && !currentSection.isMultiAxis()) {
+    writeBlock("Smoothing On allowedDeviation=" + xyzFormat.format(operationTolerance * 1.2));
+  }
+
+  if (properties.useDynamic) {
+/*
+      var dynamic = 5;
+      if (operationTolerance <= 0.02)
+      dynamic = 4;
+      if (operationTolerance <= 0.01)
+      dynamic = 3;
+      if (operationTolerance <= 0.005)
+      dynamic = 2;
+      if (operationTolerance <= 0.003)
+      dynamic = 1;
+*/
+    writeBlock("Dynamic = " + 5);
+  }
   if (properties.waitAfterOperation) {
     showWaitDialog();
   }
@@ -923,7 +962,7 @@ function onSection() {
       writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
     } else {
 			forceWorkPlane();
-      var abc = getWorkPlaneMachineABC(currentSection.workPlane);			      
+      var abc = getWorkPlaneMachineABC(currentSection.workPlane);
       setWorkPlane(abc);
     }
   } else {
@@ -947,8 +986,8 @@ function onSection() {
   
   forceAny();
 
-  if (properties.showNotes && section.hasParameter("notes")) {
-    var notes = section.getParameter("notes");
+  if (properties.showNotes && currentSection.hasParameter("notes")) {
+    var notes = currentSection.getParameter("notes");
     if (notes) {
       var lines = String(notes).split("\n");
       var r1 = new RegExp("^[\\s]+", "g");
@@ -996,7 +1035,7 @@ function onSection() {
     // set the current feed
     // replace by the default feed command
     if (properties.useParametricFeed && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
-      activeFeeds = initializeActiveFeeds(section);
+      activeFeeds = initializeActiveFeeds(currentSection);
       if (useDatronFeedCommand) {
         var datronFeedParameter = new Array();
         for (var j = 0; j < activeFeeds.length; ++j) {
@@ -1039,27 +1078,27 @@ function onSection() {
 
     switch (cycleType) {
     case "thread-milling":
-      writeBlock("SetFeedTechnology" + " ramp=" + section.getParameter("movement:cutting") + " finishing=" + section.getParameter("movement:finish_cutting"));
-      var diameter = section.getParameter("diameter");
-      var clearance = section.getParameter("clearance");
-      var retract = section.getParameter("retract");
-      var stock = section.getParameter("stock");
-      var pitch = section.getParameter("pitch");
-      var finishing = section.getParameter("stepover");
+      writeBlock("SetFeedTechnology" + " ramp=" + currentSection.getParameter("movement:cutting") + " finishing=" + currentSection.getParameter("movement:finish_cutting"));
+      var diameter = currentSection.getParameter("diameter");
+      var clearance = currentSection.getParameter("clearance");
+      var retract = currentSection.getParameter("retract");
+      var stock = currentSection.getParameter("stock");
+      var pitch = currentSection.getParameter("pitch");
+      var finishing = currentSection.getParameter("stepover");
 
       writeBlock("nominalDiameter=" + xyzFormat.format(diameter));
       sequenceParamter.push("nominalDiameter=nominalDiameter");
       writeBlock("pitch=" + xyzFormat.format(pitch));
       sequenceParamter.push("pitch=pitch");
-      if(finishing){
+      if (xyzFormat.isSignificant(finishing)) {
         writeBlock("finishing=" + xyzFormat.format(finishing));
-        sequenceParamter.push("finishing=finishing");  
+        sequenceParamter.push("finishing=finishing");
       } else {
-        sequenceParamter.push("finishing=0"); 
+        sequenceParamter.push("finishing=0");
       }
       // writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
       // sequenceParamter.push('threadName=threadName');
-      // writeBlock("threading = " + section.getParameter("threading"));
+      // writeBlock("threading = " + currentSection.getParameter("threading"));
       // sequenceParamter.push("threading=threading");
       var fastzplunge = clearance - retract;
       //writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
@@ -1074,36 +1113,36 @@ function onSection() {
       // // sequenceParamter.push("direction=ThreadMillingDirection.RightHandThread");
       
       
-      // writeBlock("direction = " + dimensionFormat.format(section.getParameter("direction")));
+      // writeBlock("direction = " + dimensionFormat.format(currentSection.getParameter("direction")));
       // sequenceParamter.push("direction=direction");
-      // writeBlock("repeatPass = " + dimensionFormat.format(section.getParameter("repeatPass")));
+      // writeBlock("repeatPass = " + dimensionFormat.format(currentSection.getParameter("repeatPass")));
       // sequenceParamter.push("repeatPass=repeatPass");
       break;
     case "bore-milling":
-      writeBlock("SetFeedTechnology roughing=" + section.getParameter("movement:cutting") + " finishing=" + section.getParameter("movement:cutting"));
-      writeBlock("diameter = " + dimensionFormat.format(section.getParameter("diameter")));
+      writeBlock("SetFeedTechnology roughing=" + currentSection.getParameter("movement:cutting") + " finishing=" + currentSection.getParameter("movement:cutting"));
+      writeBlock("diameter = " + dimensionFormat.format(currentSection.getParameter("diameter")));
       sequenceParamter.push("diameter=diameter");
 
-      var clearance = section.getParameter("clearance");
-      var retract = section.getParameter("retract");
-      var stock = section.getParameter("stock");
+      var clearance = currentSection.getParameter("clearance");
+      var retract = currentSection.getParameter("retract");
+      var stock = currentSection.getParameter("stock");
       var fastzplunge = clearance - retract;
       // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
       // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
       sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
-      writeBlock("infeedZ = " + dimensionFormat.format(section.getParameter("pitch")));
+      writeBlock("infeedZ = " + dimensionFormat.format(currentSection.getParameter("pitch")));
       sequenceParamter.push("infeedZ=infeedZ");
-      writeBlock("repeatPass = " + dimensionFormat.format(section.getParameter("repeatPass")));
+      writeBlock("repeatPass = " + dimensionFormat.format(currentSection.getParameter("repeatPass")));
       sequenceParamter.push("repeatPass=repeatPass");
       break;
     case "drilling":
-      writeBlock("SetFeedTechnology plunge=" + section.getParameter("movement:plunge"));
+      writeBlock("SetFeedTechnology plunge=" + currentSection.getParameter("movement:plunge"));
   
-      var clearance = section.getParameter("clearance");
-      var retract = section.getParameter("retract");
-      var stock = section.getParameter("stock");
+      var clearance = currentSection.getParameter("clearance");
+      var retract = currentSection.getParameter("retract");
+      var stock = currentSection.getParameter("stock");
       var fastzplunge = clearance - retract;
       // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
       // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
@@ -1112,27 +1151,27 @@ function onSection() {
       sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
       break;
   case "chip-breaking":
-      writeBlock("SetFeedTechnology plunge=" + section.getParameter("movement:plunge") + " roughing=" + section.getParameter("movement:cutting"));
+      writeBlock("SetFeedTechnology plunge=" + currentSection.getParameter("movement:plunge") + " roughing=" + currentSection.getParameter("movement:cutting"));
 
-      var clearance = section.getParameter("clearance");
-      var retract = section.getParameter("retract");
-      var stock = section.getParameter("stock");
+      var clearance = currentSection.getParameter("clearance");
+      var retract = currentSection.getParameter("retract");
+      var stock = currentSection.getParameter("stock");
       var fastzplunge = clearance - retract;
       // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
       // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
       sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
-      writeBlock("infeedZ = " + dimensionFormat.format(section.getParameter("incrementalDepth")));
+      writeBlock("infeedZ = " + dimensionFormat.format(currentSection.getParameter("incrementalDepth")));
       sequenceParamter.push("infeedZ=infeedZ");
       break;
     }
   }
 
-  if (properties.useSequences && !isProbeOperation(section)) {
+  if (properties.useSequences && !isProbeOperation(currentSection)) {
     // call sequence
     if (properties.useParametricFeed && (!useDatronFeedCommand) && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
-      activeFeeds = initializeActiveFeeds(section);
+      activeFeeds = initializeActiveFeeds(currentSection);
       for (var j = 0; j < activeFeeds.length; ++j) {
         var feedContext = activeFeeds[j];
         sequenceParamter.push(formatVariable(feedContext.description) + "=" + formatVariable(feedContext.description));
@@ -1160,40 +1199,14 @@ function onSection() {
   }
 
   if (!isProbeOperation()) {
-		tool.spindleRPM > 100 ? writeBlock("Spindle On") : writeBlock("Spindle Off");
-
-    var operationTolerance = tolerance;
-    if (hasParameter("operation:tolerance")) {
-      if (operationTolerance < getParameter("operation:tolerance")) {
-        operationTolerance = getParameter("operation:tolerance");
-      }
-    }
-
-    if (properties.useSmoothing && !currentSection.isMultiAxis()) {
-      writeBlock("Smoothing On allowedDeviation=" + xyzFormat.format(operationTolerance * 1.2));
-    }
-
-    if (properties.useDynamic) {
-/*
-      var dynamic = 5;
-      if (operationTolerance <= 0.02)
-      dynamic = 4;
-      if (operationTolerance <= 0.01)
-      dynamic = 3;
-      if (operationTolerance <= 0.005)
-      dynamic = 2;
-      if (operationTolerance <= 0.003)
-      dynamic = 1;
-*/
-      writeBlock("Dynamic = " + 5);
-    }
+		writeBlock(tool.spindleRPM > 100 ? "Spindle On" : "Spindle Off");
   } else {
     writeBlock("Spindle Off");
     writeBlock("PrepareXyzSensor");
   }
 
   // move to initial Position (this command move the Z Axis to safe high and repositioning in safe high after that drive Z to end position)
-  var initialPosition = getFramePosition(section.getInitialPosition());
+  var initialPosition = getFramePosition(currentSection.getInitialPosition());
   var xyz = xOutput.format(initialPosition.x) + yOutput.format(initialPosition.y) + zOutput.format(initialPosition.z);
   writeBlock("PrePositioning" + xyz);
 }
@@ -1491,18 +1504,22 @@ function onCyclePoint(x, y, z) {
 
   switch (cycleType) {
   case "bore-milling":
-    forceXYZ();
-    onRapid(x, y, null);
-    onRapid(x, y, cycle.retract);
-    boreMilling(cycle);
-    onRapid(x, y, cycle.clearance);
+    for (var i = 0; i <= cycle.repeatPass; ++i) {
+      forceXYZ();
+      onRapid(x, y, null);
+      onRapid(x, y, cycle.retract);
+      boreMilling(cycle);
+      onRapid(x, y, cycle.clearance);
+    }
     break;
   case "thread-milling":
-    forceXYZ();
-    onRapid(x, y, null);
-    onRapid(x, y, cycle.retract);
-    threadMilling(cycle);
-    onRapid(x, y, cycle.clearance);
+    for (var i = 0; i <= cycle.repeatPass; ++i) {
+      forceXYZ();
+      onRapid(x, y, null);
+      onRapid(x, y, cycle.retract);
+      threadMilling(cycle);
+      onRapid(x, y, cycle.clearance);
+    }
     break;
   case "drilling":
     forceXYZ();
@@ -1511,6 +1528,7 @@ function onCyclePoint(x, y, z) {
     drilling(cycle);
     onRapid(x, y, cycle.clearance);
     break;
+/*
   case "chip-breaking":
     forceXYZ();
     onRapid(x, y, null);
@@ -1518,6 +1536,7 @@ function onCyclePoint(x, y, z) {
     chipBreaking(cycle);
     onRapid(x, y, cycle.clearance);
     break;
+*/
   case "probing-x":
     forceXYZ();
     writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
@@ -1558,7 +1577,6 @@ function onCyclePoint(x, y, z) {
   return;
 }
 
-
 function drilling(cycle) {
   var boreCommandString = new Array();
   var depth = xyzFormat.format(cycle.depth);
@@ -1569,7 +1587,6 @@ function drilling(cycle) {
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   writeBlock(boreCommandString.join(" "));
 }
-
 
 function chipBreaking(cycle) {
   var boreCommandString = new Array();
@@ -1583,11 +1600,9 @@ function chipBreaking(cycle) {
   writeBlock(boreCommandString.join(" "));
 }
 
-
-
 function boreMilling(cycle) {
-  if (cycle.numberofsteps > 2) {
-    error("only 2 steps are allowed for bore-milling");
+  if (cycle.numberOfSteps > 2) {
+    error("Only 2 steps are allowed for bore-milling.");
   }
 
   var boreCommandString = new Array();
@@ -1600,9 +1615,9 @@ function boreMilling(cycle) {
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
 
-  if (cycle.numberofsteps == 2) {
+  if (cycle.numberOfSteps == 2) {
     var xycleaning = cycle.stepover;
-    var maxzdepthperstep = tool.flutelength * 0.8;
+    var maxzdepthperstep = tool.fluteLength * 0.8;
     boreCommandString.push("finishingXY=" + xyzFormat.format(xycleaning));
     boreCommandString.push("infeedFinishingZ=" + xyzFormat.format(maxzdepthperstep));
   }
