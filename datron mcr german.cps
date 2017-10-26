@@ -387,7 +387,7 @@ function getOperationDescription(section) {
   }
 
   var sectionID = section.getId() + 1;
-  var description = operationComment/* + "_" + cycleTypeString + "_" + sectionID*/;
+  var description = operationComment + "_" + cycleTypeString + "_" + sectionID;
   return description;
 }
 
@@ -1204,7 +1204,10 @@ function onSection() {
   var newWorkOffset = isFirstSection() ||
     (getPreviousSection().workOffset != currentSection.workOffset); // work offset changes
   var newWorkPlane = isFirstSection() ||
-    !isSameDirection(getPreviousSection().getGlobalFinalToolAxis(), currentSection.getGlobalInitialToolAxis());
+    !isSameDirection(getPreviousSection().getGlobalFinalToolAxis(), currentSection.getGlobalInitialToolAxis()) ||
+    (currentSection.isOptimizedForMachine() && getPreviousSection().isOptimizedForMachine() &&
+    Vector.diff(getPreviousSection().getFinalToolAxisABC(), currentSection.getInitialToolAxisABC()).length > 1e-4) ||
+    (!machineConfiguration.isMultiAxisConfiguration() && currentSection.isMultiAxis());
 
   writeBlock("(");
   if (isProbeOperation(currentSection)) {
@@ -1214,8 +1217,7 @@ function onSection() {
     writeBlock("T3d 0, 0, 1, 15, 17, 10, 10, 10, 10, 10, 10;"); // disable probe
   }
 
-  if (insertToolCall || newWorkOffset || newWorkPlane) {
-
+  if (newWorkOffset || newWorkPlane) {
     // retract to safe plane
     retracted = true;
     writeBlock(translate("Submacro") + " Retractzmax;");
@@ -1224,7 +1226,6 @@ function onSection() {
 
   if (insertToolCall) {
     forceWorkPlane();
-    retracted = true;
 
     if (tool.number > 99) {
       warning(localize("Tool number exceeds maximum value."));
