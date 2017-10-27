@@ -776,7 +776,7 @@ function forceAny() {
 function FeedContext(id, description, feed) {
   this.id = id;
   this.description = description;
-  if (revision < 41740) {
+  if (revision < 41759) {
     this.feed = (unit == MM ? feed : toPreciseUnit(feed, MM)); // temporary solution
   } else {
     this.feed = feed;
