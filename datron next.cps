@@ -1248,11 +1248,11 @@ function onRadiusCompensation() {
 }
 
 function onRapid(x, y, z) {
-  var xyz = "";
-  xyz += x ? xOutput.format(x) : "";
-  xyz += y ? yOutput.format(y) : "";
-  xyz += z ? zOutput.format(z) : "";
- 
+  var xyz = "";		
+  xyz += (x!=null) ? xOutput.format(x) : "";
+  xyz += (y!=null) ? yOutput.format(y) : "";
+  xyz += (z!=null) ? zOutput.format(z) : ""; 
+
   if (xyz) {
     if (pendingRadiusCompensation >= 0) {
       error(localize("Radius compensation mode cannot be changed at rapid traversal."));
@@ -1264,7 +1264,11 @@ function onRapid(x, y, z) {
 }
 
 function onPrePositioning(x, y, z) {
-  var xyz = xOutput.format(x) + yOutput.format(y) + zOutput.format(z);
+	var xyz = "";		
+	xyz += (x!=null) ? xOutput.format(x) : "";
+	xyz += (y!=null) ? yOutput.format(y) : "";
+	xyz += (z!=null) ? zOutput.format(z) : ""; 
+
   if (xyz) {
     if (pendingRadiusCompensation >= 0) {
       error(localize("Radius compensation mode cannot be changed at rapid traversal."));
@@ -1277,7 +1281,11 @@ function onPrePositioning(x, y, z) {
 
 
 function onLinear(x, y, z, feed) {
-  var xyz = xOutput.format(x) + yOutput.format(y) + zOutput.format(z);
+  var xyz = "";		
+  xyz += (x!=null) ? xOutput.format(x) : "";
+  xyz += (y!=null) ? yOutput.format(y) : "";
+  xyz += (z!=null) ? zOutput.format(z) : ""; 
+
   var f = getFeed(feed);
 
   if (pendingRadiusCompensation >= 0) {
