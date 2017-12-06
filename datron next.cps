@@ -1009,13 +1009,8 @@ function onSection() {
     }
   }
 
-  // TAG: is this really needed?
-  if (hasParameter("operation:clearanceHeight")) {
-    var clearance = getParameter("operation:clearanceHeight");
-    writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
-  } else {
-    // not found
-  }
+  var clearance = getFramePosition(currentSection.getInitialPosition()).z;
+  writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
 
   if (!isProbeOperation()) {
     // set rpm
