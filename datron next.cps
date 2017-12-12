@@ -212,7 +212,7 @@ function onOpen() {
   // header
   writeProgramHeader();
 
-  // write programm calls
+  // write program calls
   var numberOfSections = getNumberOfSections();
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
@@ -236,7 +236,7 @@ function onOpen() {
   spacingDepth -= 1;
   writeBlock("endprogram #" + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
   writeln("");
-  }
+}
 
 function getOperationDescription(section) {
   // creates the name of the operation
@@ -285,14 +285,16 @@ function createToolDescriptionTable() {
         toolNameList.push(toolName);
         toolDescriptionArray.push(toolProgrammed);
       } else {
-         // if (toolDescriptionArray.indexOf(toolProgrammed) == -1) {
-           // error("\r\n#####################################\r\nOne ore more tools have the same name!\r\nPlease change the tool number to make the name unique.\r\n" + toolDescriptionArray.join("\r\n") + "\r\n\r\n" +
-           // toolNameList.join("\r\n") + "#####################################\r\n");
-         // }
+/*
+       if (toolDescriptionArray.indexOf(toolProgrammed) == -1) {
+         error("\r\n#####################################\r\nOne ore more tools have the same name!\r\nPlease change the tool number to make the name unique.\r\n" + toolDescriptionArray.join("\r\n") + "\r\n\r\n" +
+         toolNameList.join("\r\n") + "#####################################\r\n");
+       }
+*/
       }
     }
   }
- 
+
   writeBlock(toolDescriptionArray.join("\r\n"));
 }
 
@@ -607,7 +609,11 @@ function FeedContext(id, description, datronFeedName, feed) {
   this.id = id;
   this.description = description;
   this.datronFeedName = datronFeedName;
-  this.feed = feed;
+  if (revision < 41759) {
+    this.feed = (unit == MM ? feed : toPreciseUnit(feed, MM)); // temporary solution
+  } else {
+    this.feed = feed;
+  }
 }
 
 /** Maps the specified feed value to Q feed or formatted feed. */
@@ -882,14 +888,12 @@ function getWorkPlaneMachineABC(workPlane) {
   return abc;
 }
 
-var isInsideSection = false;
-
 function onSection() {
-  // if (isProbeOperation(currentSection)) {
-    // // TAG: remove once probing is supported properly, waiting for Datron
-    // error(localize("Probing is not supported for now."));
-    // return;
-  // }
+  if (isProbeOperation(currentSection)) {
+    // TAG: remove once probing is supported properly, waiting for Datron
+    error(localize("Probing is not supported for now."));
+    return;
+  }
 
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
@@ -937,15 +941,19 @@ function onSection() {
 
   if (properties.useDynamic) {
 /*
-      var dynamic = 5;
-      if (operationTolerance <= 0.02)
+    var dynamic = 5;
+    if (operationTolerance <= 0.02) {
       dynamic = 4;
-      if (operationTolerance <= 0.01)
+    }
+    if (operationTolerance <= 0.01) {
       dynamic = 3;
-      if (operationTolerance <= 0.005)
+    }
+    if (operationTolerance <= 0.005) {
       dynamic = 2;
-      if (operationTolerance <= 0.003)
+    }
+    if (operationTolerance <= 0.003) {
       dynamic = 1;
+    }
 */
     writeBlock("Dynamic = " + 5);
   }
@@ -1001,17 +1009,12 @@ function onSection() {
     }
   }
 
-  // TAG is this really needed?
-  if (hasParameter("operation:clearanceHeight")) {
-    var clearance = getParameter("operation:clearanceHeight");
-    writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
-  } else {
-    // not found
-  }
+  var clearance = getFramePosition(currentSection.getInitialPosition()).z;
+  writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
 
   if (!isProbeOperation()) {
     // set rpm
-    if (tool.spindleRPM < 6000 && tool.spindleRPM > 0) {
+    if ((tool.spindleRPM < 6000) && (tool.spindleRPM > 0)) {
       tool.spindleRPM = 6000;
     }
 
@@ -1044,7 +1047,9 @@ function onSection() {
             name : feedContext.datronFeedName,
             feed : feedFormat.format(feedContext.feed)
           };
-          var indexOfFeedContext = datronFeedParameter.map(function (e) {return e.name;}).indexOf(datronFeedCommand.name);
+/*eslint-disable*/
+          var indexOfFeedContext = datronFeedParameter.map(function(e) {return e.name;}).indexOf(datronFeedCommand.name);
+/*eslint-enable*/
           if (indexOfFeedContext == -1) {
             datronFeedParameter.push(datronFeedCommand);
           } else {
@@ -1100,27 +1105,29 @@ function onSection() {
       } else {
         sequenceParamter.push("finishing=0");
       }
-      // writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
-      // sequenceParamter.push('threadName=threadName');
-      // writeBlock("threading = " + currentSection.getParameter("threading"));
-      // sequenceParamter.push("threading=threading");
+/*
+      writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
+      sequenceParamter.push('threadName=threadName');
+      writeBlock("threading = " + currentSection.getParameter("threading"));
+      sequenceParamter.push("threading=threading");
+*/
       var fastzplunge = clearance - retract;
-      //writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
-      //sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
       var slowzplunge = retract - stock;
       writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
       sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
-      // TAG: den Standard auch mit Imerial unterstuezten
-      // sequenceParamter.push("threadStandard=ThreadStandards.Metric");
-      // // sequenceParamter.push("deburring=ThreadMillingDeburring.NoDeburring");
-      // // sequenceParamter.push("insideOutside=ThreadMillingSide.Inside");
-      // // sequenceParamter.push("direction=ThreadMillingDirection.RightHandThread");
-      
-      
-      // writeBlock("direction = " + dimensionFormat.format(currentSection.getParameter("direction")));
-      // sequenceParamter.push("direction=direction");
-      // writeBlock("repeatPass = " + dimensionFormat.format(currentSection.getParameter("repeatPass")));
-      // sequenceParamter.push("repeatPass=repeatPass");
+/*
+      TAG: den Standard auch mit Imperial unterstuezten
+      sequenceParamter.push("threadStandard=ThreadStandards.Metric");
+      sequenceParamter.push("deburring=ThreadMillingDeburring.NoDeburring");
+      sequenceParamter.push("insideOutside=ThreadMillingSide.Inside");
+      sequenceParamter.push("direction=ThreadMillingDirection.RightHandThread");
+      writeBlock("direction = " + dimensionFormat.format(currentSection.getParameter("direction")));
+      sequenceParamter.push("direction=direction");
+      writeBlock("repeatPass = " + dimensionFormat.format(currentSection.getParameter("repeatPass")));
+      sequenceParamter.push("repeatPass=repeatPass");
+*/
       break;
     case "bore-milling":
       writeBlock("SetFeedTechnology roughing=" + currentSection.getParameter("movement:cutting") + " finishing=" + currentSection.getParameter("movement:cutting"));
@@ -1252,10 +1259,10 @@ function onRadiusCompensation() {
 }
 
 function onRapid(x, y, z) {
-  var xyz = "";		
-  xyz += (x!=null) ? xOutput.format(x) : "";
-  xyz += (y!=null) ? yOutput.format(y) : "";
-  xyz += (z!=null) ? zOutput.format(z) : ""; 
+  var xyz = "";
+  xyz += (x !== null) ? xOutput.format(x) : "";
+  xyz += (y !== null) ? yOutput.format(y) : "";
+  xyz += (z !== null) ? zOutput.format(z) : "";
 
   if (xyz) {
     if (pendingRadiusCompensation >= 0) {
@@ -1268,10 +1275,10 @@ function onRapid(x, y, z) {
 }
 
 function onPrePositioning(x, y, z) {
-	var xyz = "";		
-	xyz += (x!=null) ? xOutput.format(x) : "";
-	xyz += (y!=null) ? yOutput.format(y) : "";
-	xyz += (z!=null) ? zOutput.format(z) : ""; 
+  var xyz = "";
+  xyz += (x !== null) ? xOutput.format(x) : "";
+  xyz += (y !== null) ? yOutput.format(y) : "";
+  xyz += (z !== null) ? zOutput.format(z) : "";
 
   if (xyz) {
     if (pendingRadiusCompensation >= 0) {
@@ -1283,12 +1290,11 @@ function onPrePositioning(x, y, z) {
   }
 }
 
-
 function onLinear(x, y, z, feed) {
-  var xyz = "";		
-  xyz += (x!=null) ? xOutput.format(x) : "";
-  xyz += (y!=null) ? yOutput.format(y) : "";
-  xyz += (z!=null) ? zOutput.format(z) : ""; 
+  var xyz = "";
+  xyz += (x !== null) ? xOutput.format(x) : "";
+  xyz += (y !== null) ? yOutput.format(y) : "";
+  xyz += (z !== null) ? zOutput.format(z) : "";
 
   var f = getFeed(feed);
 
@@ -1348,7 +1354,8 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
         (clockwise ? " CW" : " CCW") +
         xOutput.format(x) +
         iOutput.format(cx - start.x) +
-        jOutput.format(cy - start.y));
+        jOutput.format(cy - start.y)
+      );
       break;
     default:
       linearize(tolerance);
@@ -1362,7 +1369,8 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
         yOutput.format(y) +
         zOutput.format(z) +
         iOutput.format(cx - start.x) +
-        jOutput.format(cy - start.y));
+        jOutput.format(cy - start.y)
+      );
       break;
     default:
       linearize(tolerance);
@@ -1595,7 +1603,7 @@ function drilling(cycle) {
   
   boreCommandString.push("Drill");
   boreCommandString.push("depth=" + depth);
-  //boreCommandString.push("strokeRapidZ=strokeRapidZ");
+  // boreCommandString.push("strokeRapidZ=strokeRapidZ");
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   writeBlock(boreCommandString.join(" "));
 }
@@ -1606,7 +1614,7 @@ function chipBreaking(cycle) {
   
   boreCommandString.push("Drill");
   boreCommandString.push("depth=" + depth);
-  //boreCommandString.push("strokeRapidZ=strokeRapidZ");
+  // boreCommandString.push("strokeRapidZ=strokeRapidZ");
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
   writeBlock(boreCommandString.join(" "));
@@ -1623,7 +1631,7 @@ function boreMilling(cycle) {
   boreCommandString.push("DrillMilling");
   boreCommandString.push("diameter=diameter");
   boreCommandString.push("depth=" + depth);
-  //boreCommandString.push("strokeRapidZ=strokeRapidZ");
+  // boreCommandString.push("strokeRapidZ=strokeRapidZ");
   boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
 
@@ -1649,7 +1657,7 @@ function threadMilling(cycle) {
   threadString.push("nominalDiameter=nominalDiameter");
   threadString.push("pitch=pitch");
   threadString.push("depth=" + depth);
-  //threadString.push("strokeRapidZ=strokeRapidZ");
+  // threadString.push("strokeRapidZ=strokeRapidZ");
   threadString.push("strokeCuttingZ=strokeCuttingZ");
   // threadString.push("threadStandard=threadStandard");
   // threadString.push("deburring=ThreadMillingDeburring.NoDeburring");
