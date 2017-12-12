@@ -1073,6 +1073,10 @@ function onSection() {
   var sequenceParamter = new Array();
 
   if (hasParameter("operation:cycleType")) {
+		
+		//Reset all the Movements to suppress older entries...
+		activeMovements = new Array();
+		
     var cycleType = getParameter("operation:cycleType");
     writeComment("Parameter " + cycleType + " cycle");
 
