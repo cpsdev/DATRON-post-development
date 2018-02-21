@@ -935,6 +935,12 @@ function onSection() {
     }
   }
 
+	//load the matching workOffset
+	var workOffset = currentSection.getWorkOffset();
+	if (workOffset!= 0){
+		writeBlock("LoadWcs name=\"" + workOffset +"\"");
+	}
+	
   if (properties.useSmoothing && !currentSection.isMultiAxis()) {
     writeBlock("Smoothing On allowedDeviation=" + xyzFormat.format(operationTolerance * 1.2));
   }
