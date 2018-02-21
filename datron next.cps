@@ -1097,6 +1097,7 @@ function onSection() {
       var diameter = currentSection.getParameter("diameter");
       var pitch = currentSection.getParameter("pitch");
       var finishing = currentSection.getParameter("stepover");
+		
 
       writeBlock("nominalDiameter=" + xyzFormat.format(diameter));
       sequenceParamter.push("nominalDiameter=nominalDiameter");
@@ -1108,7 +1109,7 @@ function onSection() {
       } else {
         sequenceParamter.push("finishing=0");
       }
-/*
+			/*
       writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
       sequenceParamter.push('threadName=threadName');
       writeBlock("threading = " + currentSection.getParameter("threading"));
@@ -1619,6 +1620,9 @@ function threadMilling(cycle) {
   var threadString = new Array();
   var depth = xyzFormat.format(cycle.depth);
   
+	var isLeft = ( cycle.threading == "left" )? true :false;
+	
+	
   threadString.push("SpecialThread");
   // threadString.push('threadName=threadName');
   threadString.push("nominalDiameter=nominalDiameter");
@@ -1631,6 +1635,10 @@ function threadMilling(cycle) {
   // threadString.push("insideOutside=ThreadMillingSide.Inside");
   // threadString.push("direction=ThreadMillingDirection.RightHandThread");
   threadString.push("finishing=finishing");
+	if(isLeft){
+		threadString.push("direction=ThreadMillingDirection.LeftHandThread");
+	}
+	
   writeBlock(threadString.join(" "));
 }
 
