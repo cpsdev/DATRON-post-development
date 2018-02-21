@@ -1533,7 +1533,6 @@ function onCyclePoint(x, y, z) {
 */
   case "probing-x":
     forceXYZ();
-    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
     onRapid(x,y,cycle.stock);
     onLinear(x,y,(z - cycle.depth + tool.cornerRadius),cycle.feedrate)
    
@@ -1545,7 +1544,7 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-y":
     forceXYZ();
-    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
+    onRapid(x,y,cycle.stock);
     onLinear(x,y,(z - cycle.depth + tool.cornerRadius),cycle.feedrate)
     
     var measureString = "EdgeMeasure ";
@@ -1556,7 +1555,7 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-z":
     forceXYZ();
-    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
+    onRapid(x,y,cycle.stock);
     onLinear(x,y,(Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract)),cycle.feedrate)
   
     var measureString = "SurfaceMeasure ";
@@ -1711,8 +1710,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-xy-inner-corner":
   zOutput.reset();
-    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
-    onLinear(x,y,(z - cycle.depth + tool.cornerRadius),cycle.feedrate)
+    var probingDepth = (z - cycle.depth + tool.cornerRadius);
+    onRapid(x,y,cycle.stock);
+    onLinear(x,y,probingDepth,cycle.feedrate)
   
     var measureString = "EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
@@ -1720,9 +1720,10 @@ function onCyclePoint(x, y, z) {
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
     writeBlock(measureString);
 
-    zOutput.reset();
-    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
-    onLinear(x,y,(z - cycle.depth + tool.cornerRadius),cycle.feedrate)
+    forceXYZ();
+    //zOutput.reset();
+    onRapid(x,y,cycle.stock);
+    onLinear(x,y, probingDepth,cycle.feedrate)
     
     var measureString = "EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
@@ -1753,25 +1754,41 @@ function onCyclePoint(x, y, z) {
     // writeBlock(measureString);   
     break;
   case "probing-xy-outer-corner":
+    var probingDepth = (z - cycle.depth + tool.cornerRadius);
+    var touchPositionX1 = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
+    var touchPositionY1 = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
+  
+
     zOutput.reset();
-    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
-    onLinear(x,y,(z - cycle.depth + tool.cornerRadius),cycle.feedrate)
+    onRapid(x,y,probingDepth);
+
+    onLinear(x,touchPositionY1, probingDepth,cycle.feedrate);
 
     var measureString = "EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
     measureString += " originShift=" + xyzFormat.format(-1 * (x + approach(cycle.approach1) * startPositionOffset));
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
     writeBlock(measureString);
-
-    zOutput.reset();
-    writeBlock("Rapid Z=" + xyzFormat.format(cycle.stock));
-    onLinear(x,y,(z - cycle.depth + tool.cornerRadius),cycle.feedrate)
+    forceXYZ();
+    onLinear(x,touchPositionY1, probingDepth,cycle.feedrate)
+    
+    onLinear(x,y,probingDepth,cycle.feedrate);
+    
+    //forceXYZ();
+    //zOutput.reset();
+    onLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
+    onLinear(touchPositionX1, y, probingDepth,cycle.feedrate);
     
     var measureString = "EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
     measureString += " originShift=" + xyzFormat.format(-1 * (y + approach(cycle.approach1) * startPositionOffset));
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
     writeBlock(measureString);
+    forceXYZ();
+    onLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
+    onLinear(x, y, probingDepth, cycle.feedrate);
+    
+    
     // var isXNeagtive = (cycle.approach1 == "negative") ? true : false;
     // var isYNeagtive = (cycle.approach2 == "negative") ? true : false;
     
