@@ -638,7 +638,7 @@ function getFeed(f) {
   }
   if (feedFormat.areDifferent(currentFeedValue, f)) {
     currentFeedValue = f;
-    return "Feed=" + feedFormat.format(f);
+    return "Feed=" + f;
   }
   return "";
 }
@@ -1068,7 +1068,7 @@ function onSection() {
       } else {
         for (var j = 0; j < activeFeeds.length; ++j) {
           var feedContext = activeFeeds[j];
-          writeBlock(formatVariable(feedContext.description) + " = " + feedFormat.format(feedContext.feed) + (unit == MM ? " # mm/min!" : " # in/min!"));
+          writeBlock(formatVariable(feedContext.description) + " = " + feedFormat.format(feedContext.feed) + " # mm/min!");
         }
       }
     }
@@ -1079,7 +1079,7 @@ function onSection() {
 
   if (hasParameter("operation:cycleType")) {
 		
-		//Reset all movements to suppress older entries...
+		//Reset all the Movements to suppress older entries...
 		activeMovements = new Array();
 		
     var cycleType = getParameter("operation:cycleType");
@@ -1087,8 +1087,11 @@ function onSection() {
 
     switch (cycleType) {
     case "thread-milling":
-      writeBlock("SetFeedTechnology" + " ramp=" + feedFormat.format(getParameter("movement:cutting")) + " finishing=" + feedFormat.format(getParameter("movement:finish_cutting")));
+      writeBlock("SetFeedTechnology" + " ramp=" + currentSection.getParameter("movement:cutting") + " finishing=" + currentSection.getParameter("movement:finish_cutting"));
       var diameter = currentSection.getParameter("diameter");
+      var clearance = currentSection.getParameter("clearance");
+      var retract = currentSection.getParameter("retract");
+      var stock = currentSection.getParameter("stock");
       var pitch = currentSection.getParameter("pitch");
       var finishing = currentSection.getParameter("stepover");
 
@@ -1107,7 +1110,14 @@ function onSection() {
       sequenceParamter.push('threadName=threadName');
       writeBlock("threading = " + currentSection.getParameter("threading"));
       sequenceParamter.push("threading=threading");
-
+*/
+      var fastzplunge = clearance - retract;
+      // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      var slowzplunge = retract - stock;
+      writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
+      sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
+/*
       TAG: den Standard auch mit Imperial unterstuezten
       sequenceParamter.push("threadStandard=ThreadStandards.Metric");
       sequenceParamter.push("deburring=ThreadMillingDeburring.NoDeburring");
@@ -1120,20 +1130,49 @@ function onSection() {
 */
       break;
     case "bore-milling":
-      writeBlock("SetFeedTechnology roughing=" + feedFormat.format(getParameter("movement:cutting")) + " finishing=" + feedFormat.format(getParameter("movement:cutting")));
+      writeBlock("SetFeedTechnology roughing=" + currentSection.getParameter("movement:cutting") + " finishing=" + currentSection.getParameter("movement:cutting"));
       writeBlock("diameter = " + dimensionFormat.format(currentSection.getParameter("diameter")));
       sequenceParamter.push("diameter=diameter");
 
+      var clearance = currentSection.getParameter("clearance");
+      var retract = currentSection.getParameter("retract");
+      var stock = currentSection.getParameter("stock");
+      var fastzplunge = clearance - retract;
+      // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      var slowzplunge = retract - stock;
+      writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
+      sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
       writeBlock("infeedZ = " + dimensionFormat.format(currentSection.getParameter("pitch")));
       sequenceParamter.push("infeedZ=infeedZ");
       writeBlock("repeatPass = " + dimensionFormat.format(currentSection.getParameter("repeatPass")));
       sequenceParamter.push("repeatPass=repeatPass");
       break;
     case "drilling":
-      writeBlock("SetFeedTechnology plunge=" + feedFormat.format(getParameter("movement:plunge")));
+      writeBlock("SetFeedTechnology plunge=" + currentSection.getParameter("movement:plunge"));
+  
+      var clearance = currentSection.getParameter("clearance");
+      var retract = currentSection.getParameter("retract");
+      var stock = currentSection.getParameter("stock");
+      var fastzplunge = clearance - retract;
+      // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      var slowzplunge = retract - stock;
+      writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
+      sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
       break;
   case "chip-breaking":
-      writeBlock("SetFeedTechnology plunge=" + feedFormat.format(getParameter("movement:plunge")) + " roughing=" + feedFormat.format(getParameter("movement:cutting")));
+      writeBlock("SetFeedTechnology plunge=" + currentSection.getParameter("movement:plunge") + " roughing=" + currentSection.getParameter("movement:cutting"));
+
+      var clearance = currentSection.getParameter("clearance");
+      var retract = currentSection.getParameter("retract");
+      var stock = currentSection.getParameter("stock");
+      var fastzplunge = clearance - retract;
+      // writeBlock("strokeRapidZ = " + dimensionFormat.format(fastzplunge));
+      // sequenceParamter.push("strokeRapidZ=strokeRapidZ");
+      var slowzplunge = retract - stock;
+      writeBlock("strokeCuttingZ = " + dimensionFormat.format(slowzplunge));
+      sequenceParamter.push("strokeCuttingZ=strokeCuttingZ");
       writeBlock("infeedZ = " + dimensionFormat.format(currentSection.getParameter("incrementalDepth")));
       sequenceParamter.push("infeedZ=infeedZ");
       break;
@@ -1565,7 +1604,7 @@ function drilling(cycle) {
   boreCommandString.push("Drill");
   boreCommandString.push("depth=" + depth);
   // boreCommandString.push("strokeRapidZ=strokeRapidZ");
-  // boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
+  boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   writeBlock(boreCommandString.join(" "));
 }
 
@@ -1576,7 +1615,7 @@ function chipBreaking(cycle) {
   boreCommandString.push("Drill");
   boreCommandString.push("depth=" + depth);
   // boreCommandString.push("strokeRapidZ=strokeRapidZ");
-  // boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
+  boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
   writeBlock(boreCommandString.join(" "));
 }
@@ -1593,7 +1632,7 @@ function boreMilling(cycle) {
   boreCommandString.push("diameter=diameter");
   boreCommandString.push("depth=" + depth);
   // boreCommandString.push("strokeRapidZ=strokeRapidZ");
-  // boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
+  boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
 
   if (cycle.numberOfSteps == 2) {
@@ -1619,7 +1658,7 @@ function threadMilling(cycle) {
   threadString.push("pitch=pitch");
   threadString.push("depth=" + depth);
   // threadString.push("strokeRapidZ=strokeRapidZ");
-  // threadString.push("strokeCuttingZ=strokeCuttingZ");
+  threadString.push("strokeCuttingZ=strokeCuttingZ");
   // threadString.push("threadStandard=threadStandard");
   // threadString.push("deburring=ThreadMillingDeburring.NoDeburring");
   // threadString.push("insideOutside=ThreadMillingSide.Inside");
