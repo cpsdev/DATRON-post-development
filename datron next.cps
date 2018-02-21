@@ -1706,46 +1706,52 @@ function onCyclePoint(x, y, z) {
     writeBlock(measureString);   
     break;
   case "probing-xy-inner-corner":
-    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    // writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-
-    // var touchPositionX1 = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
-    // writeBlock("Xvalue1 = " + touchPositionX1 + ";");
-    // writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
-    // writeBlock("Newpos = X6p + (" + xOutput.format(x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2)) + ") - Xvalue1;");
-    // writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
-
-    // // Y position
-    // forceXYZ();
-    // var touchPositionY1 = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
-    // writeBlock("Yvalue1 = " + touchPositionY1 + ";");
-    // writeBlock("Taxyz 2, X6p, Yvalue1, Z6p, 1, 0, 0;");
-    // writeBlock("Newpos = Y6p + (" + yOutput.format(y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter / 2)) + ") - Yvalue1;");
-    // writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
-    // writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    var isXNeagtive = (cycle.approach1 == "negative") ? true : false;
+    var isYNeagtive = (cycle.approach2 == "negative") ? true : false;
+    
+    var orientation = ""
+    if (!isXNeagtive && !isYNeagtive) orientation = "FrontLeft";
+    if (isXNeagtive && !isYNeagtive) orientation = "FrontRight";
+    if (!isXNeagtive && isYNeagtive) orientation = "BackLeft";
+    if (isXNeagtive && isYNeagtive) orientation = "BackRight";
+   
+    var measureString = "CornerMeasure";
+    measureString += " " + orientation;
+    measureString += " Inside";    
+    measureString += " xMeasureYOffset=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " yMeasureXOffset=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);   
+    measureString += " forceSafeHeight"
+    measureString += " skipZMeasure";
+    measureString += " originXShift=" + xyzFormat.format(-x);
+    measureString += " originYShift=" + xyzFormat.format(-y);
+    writeBlock(measureString);   
     break;
   case "probing-xy-outer-corner":
-    // X position
-    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
-    // writeBlock(gMotionModal.format(0), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y * -1) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    // var touchPositionX1 = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
-    // writeBlock("Xvalue1 = " + touchPositionX1 + ";");
-    // writeBlock("Taxyz 2, Xvalue1, Y6p, Z6p, 1, 0, 0;");
-    // writeBlock("Newpos = X6p + (" + xOutput.format(x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2)) + ") - Xvalue1;");
-    // writeBlock(translate("Setzp") + " Newpos, Y6p, Z6p;");
-
-    // // Y position
-    // forceXYZ();
-    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    // writeBlock(gMotionModal.format(1), xOutput.format(x * -1) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    // var touchPositionY1 = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
-    // writeBlock("Yvalue1 = " + touchPositionY1 + ";");
-    // writeBlock("Taxyz 2, X6p, Yvalue1, Z6p, 1, 0, 0;");
-    // writeBlock("Newpos = Y6p + (" + yOutput.format(y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter / 2)) + ") - Yvalue1;");
-    // writeBlock(translate("Setzp") + " X6p, Newpos, Z6p;");
-    // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(z - cycle.depth) + ", 0, 0;");
-    // writeBlock(gMotionModal.format(1), "X6p, Y6p" + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
+    var isXNeagtive = (cycle.approach1 == "negative") ? true : false;
+    var isYNeagtive = (cycle.approach2 == "negative") ? true : false;
+    
+    var orientation = ""
+    if (!isXNeagtive && !isYNeagtive) orientation = "FrontLeft";
+    if (isXNeagtive && !isYNeagtive) orientation = "FrontRight";
+    if (!isXNeagtive && isYNeagtive) orientation = "BackLeft";
+    if (isXNeagtive && isYNeagtive) orientation = "BackRight";
+  
+    var measureString = "CornerMeasure";
+    measureString += " " + orientation;
+    measureString += " Outside";    
+    measureString += " xMeasureYOffset=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " yMeasureXOffset=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);   
+    measureString += " forceSafeHeight"
+    measureString += " skipZMeasure";
+    measureString += " originXShift=" + xyzFormat.format(-x);
+    measureString += " originYShift=" + xyzFormat.format(-y);
+    writeBlock(measureString);   
     break;
   case "probing-x-plane-angle":
     // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
