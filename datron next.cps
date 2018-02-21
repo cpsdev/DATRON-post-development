@@ -940,7 +940,7 @@ function onSection() {
   }
 
   if (properties.useDynamic) {
-/*
+
     var dynamic = 5;
     if (operationTolerance <= 0.02) {
       dynamic = 4;
@@ -954,8 +954,8 @@ function onSection() {
     if (operationTolerance <= 0.003) {
       dynamic = 1;
     }
-*/
-    writeBlock("Dynamic = " + 5);
+		
+    writeBlock("Dynamic = " + dynamic);
   }
   if (properties.waitAfterOperation) {
     showWaitDialog();
