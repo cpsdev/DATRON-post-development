@@ -1499,8 +1499,9 @@ function onCyclePoint(x, y, z) {
       forceXYZ();      
       onRapid(x, y, null);
       onRapid(x, y, cycle.retract);
+      onLinear(x,y,cycle.stock,cycle.feedrate);
       boreMilling(cycle);
-      onRapid(x, y, cycle.clearance);
+      onRapid(x, y, cycle.clearance);    
     }
     break;
   case "thread-milling":
@@ -1508,6 +1509,7 @@ function onCyclePoint(x, y, z) {
       forceXYZ();
       onRapid(x, y, null);
       onRapid(x, y, cycle.retract);
+      onLinear(x,y,cycle.stock,cycle.feedrate);
       threadMilling(cycle);
       onRapid(x, y, cycle.clearance);
     }
@@ -1516,6 +1518,7 @@ function onCyclePoint(x, y, z) {
     forceXYZ();
     onRapid(x, y, null);
     onRapid(x, y, cycle.retract);
+    onLinear(x,y,cycle.stock,cycle.feedrate);
     drilling(cycle);
     onRapid(x, y, cycle.clearance);
     break;
