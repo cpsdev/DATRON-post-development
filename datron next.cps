@@ -478,8 +478,11 @@ function writeProgramHeader() {
     if (properties.useExternalSequencesFiles) {
       writeBlock("@ EmbeddedSequences = false @");
     }
-    writeBlock("sequence " + sequences.join("\r\nsequence "));
-    writeBlock(" ");
+    if(sequences.length >0){
+      writeBlock("sequence " + sequences.join("\r\nsequence "));
+      writeBlock(" ");
+    }
+  
   }
 
   // dont ask why the control need it
@@ -899,7 +902,7 @@ function onSection() {
   optionalSection = currentSection.isOptional();
   var tool = currentSection.getTool();
 
-  if (!isProbeOperation()) {
+  if (!isProbeOperation(currentSection)) {
     writeComment("Operation Time: " + formatCycleTime(currentSection.getCycleTime()));
   }
 
@@ -1018,7 +1021,7 @@ function onSection() {
   var clearance = getFramePosition(currentSection.getInitialPosition()).z;
   writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
 
-  if (!isProbeOperation()) {
+  if (!isProbeOperation(currentSection)) {
     // set rpm
     if ((tool.spindleRPM < 6000) && (tool.spindleRPM > 0)) {
       tool.spindleRPM = 6000;
@@ -1177,7 +1180,7 @@ function onSection() {
     }
   }
 
-  if (!isProbeOperation()) {
+  if (!isProbeOperation(currentSection)) {
 		writeBlock(tool.spindleRPM > 100 ? "Spindle On" : "Spindle Off");
   } else {
     writeBlock("Spindle Off");
@@ -1474,8 +1477,8 @@ function onCycleEnd() {
   // useDatronFeedCommand = false;
 }
 
-function isProbeOperation() {
-  return (hasParameter("operation-strategy") && getParameter("operation-strategy") == "probe");
+function isProbeOperation(section) {
+  return (section.hasParameter("operation-strategy") && section.getParameter("operation-strategy") == "probe");
 }
 
 function approach(value) {
@@ -1486,7 +1489,7 @@ function approach(value) {
 function onCyclePoint(x, y, z) {
   var feedString = feedOutput.format(cycle.feedrate);
 
-  if (isProbeOperation()) {
+  if (isProbeOperation(currentSection)) {
     var startPositionOffset = cycle.probeClearance + tool.cornerRadius;
   }
 
