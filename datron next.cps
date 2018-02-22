@@ -892,11 +892,11 @@ function getWorkPlaneMachineABC(workPlane) {
 }
 
 function onSection() {
-  // if (isProbeOperation(currentSection)) {
-  //   // TAG: remove once probing is supported properly, waiting for Datron
-  //   error(localize("Probing is not supported for now."));
-  //   return;
-  // }
+  if (isProbeOperation(currentSection)) {
+    // TAG: remove once probing is supported properly, waiting for Datron
+    error(localize("Probing is not supported for now."));
+    return;
+  }
 
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
