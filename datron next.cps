@@ -1,5 +1,5 @@
 /**
-  Copyright (C) 2012-2017 by Autodesk, Inc.
+  Copyright (C) 2012-2018 by Autodesk, Inc.
   All rights reserved.
 
   DATRON post processor configuration.
@@ -13,7 +13,7 @@
 description = "DATRON next";
 vendor = "DATRON";
 vendorUrl = "http://www.datron.com";
-legal = "Copyright (C) 2012-2017 by Autodesk, Inc.";
+legal = "Copyright (C) 2012-2018 by Autodesk, Inc.";
 certificationLevel = 2;
 minimumRevision = 24000;
 
@@ -474,15 +474,13 @@ function writeProgramHeader() {
 				sequences.push(getSequenceName(section));
 			}
     }
-
     if (properties.useExternalSequencesFiles) {
       writeBlock("@ EmbeddedSequences = false @");
     }
-    if(sequences.length >0){
+    if (sequences.length > 0) {
       writeBlock("sequence " + sequences.join("\r\nsequence "));
       writeBlock(" ");
     }
-  
   }
 
   // dont ask why the control need it
@@ -940,7 +938,7 @@ function onSection() {
 
 	//load the matching workOffset
 	var workOffset = currentSection.getWorkOffset();
-	if (workOffset!= 0){
+	if (workOffset!= 0) {
 		writeBlock("LoadWcs name=\"" + workOffset +"\"");
 	}
 	
@@ -1043,7 +1041,6 @@ function onSection() {
       );
     }
 
-
     // set the current feed
     // replace by the default feed command
     if (properties.useParametricFeed && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
@@ -1100,7 +1097,6 @@ function onSection() {
       var diameter = currentSection.getParameter("diameter");
       var pitch = currentSection.getParameter("pitch");
       var finishing = currentSection.getParameter("stepover");
-		
 
       writeBlock("nominalDiameter=" + xyzFormat.format(diameter));
       sequenceParamter.push("nominalDiameter=nominalDiameter");
@@ -1112,7 +1108,7 @@ function onSection() {
       } else {
         sequenceParamter.push("finishing=0");
       }
-			/*
+/*
       writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
       sequenceParamter.push('threadName=threadName');
       writeBlock("threading = " + currentSection.getParameter("threading"));
@@ -1421,7 +1417,6 @@ function setCoolant(coolant) {
     default:
       onUnsupportedCoolant(coolant);
     }
-
     writeBlock("SpraySystem On");
     currentCoolantMode = coolant;
   }
@@ -1470,11 +1465,9 @@ function onCommand(command) {
 }
 
 function onCycle() {
-  // useDatronFeedCommand = true;
 }
 
 function onCycleEnd() {
-  // useDatronFeedCommand = false;
 }
 
 function isProbeOperation(section) {
@@ -1496,12 +1489,12 @@ function onCyclePoint(x, y, z) {
   switch (cycleType) {
   case "bore-milling":
     for (var i = 0; i <= cycle.repeatPass; ++i) {
-      forceXYZ();      
+      forceXYZ();
       onRapid(x, y, null);
       onRapid(x, y, cycle.retract);
-      onLinear(x,y,cycle.stock,cycle.feedrate);
+      onLinear(x, y, cycle.stock, cycle.feedrate);
       boreMilling(cycle);
-      onRapid(x, y, cycle.clearance);    
+      onRapid(x, y, cycle.clearance);
     }
     break;
   case "thread-milling":
@@ -1509,7 +1502,7 @@ function onCyclePoint(x, y, z) {
       forceXYZ();
       onRapid(x, y, null);
       onRapid(x, y, cycle.retract);
-      onLinear(x,y,cycle.stock,cycle.feedrate);
+      onLinear(x, y, cycle.stock, cycle.feedrate);
       threadMilling(cycle);
       onRapid(x, y, cycle.clearance);
     }
@@ -1518,7 +1511,7 @@ function onCyclePoint(x, y, z) {
     forceXYZ();
     onRapid(x, y, null);
     onRapid(x, y, cycle.retract);
-    onLinear(x,y,cycle.stock,cycle.feedrate);
+    onLinear(x, y, cycle.stock, cycle.feedrate);
     drilling(cycle);
     onRapid(x, y, cycle.clearance);
     break;
@@ -1533,8 +1526,8 @@ function onCyclePoint(x, y, z) {
 */
   case "probing-x":
     forceXYZ();
-    onRapid(x,y,cycle.stock);
-    onLinear(x,y,(z - cycle.depth + tool.cornerRadius),cycle.feedrate)
+    onRapid(x, y, cycle.stock);
+    onLinear(x, y, (z - cycle.depth + tool.cornerRadius), cycle.feedrate);
    
     var measureString = "EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
@@ -1544,8 +1537,8 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-y":
     forceXYZ();
-    onRapid(x,y,cycle.stock);
-    onLinear(x,y,(z - cycle.depth + tool.cornerRadius),cycle.feedrate)
+    onRapid(x, y, cycle.stock);
+    onLinear(x, y, (z - cycle.depth + tool.cornerRadius), cycle.feedrate);
     
     var measureString = "EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
@@ -1555,14 +1548,13 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-z":
     forceXYZ();
-    onRapid(x,y,cycle.stock);
-    onLinear(x,y,(Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract)),cycle.feedrate)
+    onRapid(x, y, cycle.stock);
+    onLinear(x, y, (Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract)), cycle.feedrate);
   
     var measureString = "SurfaceMeasure ";
     measureString += " originZShift=" + xyzFormat.format(z - cycle.depth);
     writeBlock(measureString);
     break;
-//###################################################################
   case "probing-x-wall":
     var measureString = "SymmetryAxisMeasure";
     measureString += " width=" + cycle.width1;
@@ -1572,7 +1564,7 @@ function onCyclePoint(x, y, z) {
     measureString += " XAligned";
     measureString += " skipZMeasure";
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-y-wall":
     var measureString = "SymmetryAxisMeasure";
@@ -1583,7 +1575,7 @@ function onCyclePoint(x, y, z) {
     measureString += " YAligned";
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-x-channel":
     var measureString = "SymmetryAxisMeasure";
@@ -1594,7 +1586,7 @@ function onCyclePoint(x, y, z) {
     measureString += " XAligned";
     measureString += " skipZMeasure";
      measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-x-channel-with-island":
     var measureString = "SymmetryAxisMeasure";
@@ -1603,10 +1595,10 @@ function onCyclePoint(x, y, z) {
     measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " Inside";
     measureString += " XAligned";
-    measureString += " forceSafeHeight"
+    measureString += " forceSafeHeight";
     measureString += " skipZMeasure";
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-y-channel":
     var measureString = "SymmetryAxisMeasure";
@@ -1617,7 +1609,7 @@ function onCyclePoint(x, y, z) {
     measureString += " YAligned";
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-y-channel-with-island":
     var measureString = "SymmetryAxisMeasure";
@@ -1626,10 +1618,10 @@ function onCyclePoint(x, y, z) {
     measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " Inside";
     measureString += " YAligned";
-    measureString += " forceSafeHeight"
+    measureString += " forceSafeHeight";
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
-     writeBlock(measureString);   
+     writeBlock(measureString);
     break;
   case "probing-xy-circular-boss":
     var measureString = "CircleMeasure";
@@ -1640,7 +1632,7 @@ function onCyclePoint(x, y, z) {
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-xy-circular-hole":
     var measureString = "CircleMeasure";
@@ -1651,7 +1643,7 @@ function onCyclePoint(x, y, z) {
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-xy-circular-hole-with-island":
     var measureString = "CircleMeasure";
@@ -1659,11 +1651,11 @@ function onCyclePoint(x, y, z) {
     measureString += " searchDistance=" + cycle.probeClearance;
     measureString += " measureZPos=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " Inside";
-    measureString += " forceSafeHeight"
+    measureString += " forceSafeHeight";
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-xy-rectangular-boss":
     var measureString = "RectangleMeasure";
@@ -1677,7 +1669,7 @@ function onCyclePoint(x, y, z) {
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-xy-rectangular-hole":
     var measureString = "RectangleMeasure";
@@ -1687,11 +1679,11 @@ function onCyclePoint(x, y, z) {
     measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " Inside";
-    measureString += " Center"; 
+    measureString += " Center";
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-xy-rectangular-hole-with-island":
     var measureString = "RectangleMeasure";
@@ -1702,19 +1694,19 @@ function onCyclePoint(x, y, z) {
     measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " Inside";
     measureString += " Center";
-    measureString += " forceSafeHeight"
+    measureString += " forceSafeHeight";
     measureString += " skipZMeasure";
     measureString += " originXShift=" + xyzFormat.format(-x);
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);   
+    writeBlock(measureString);
     break;
   case "probing-xy-inner-corner":
-  zOutput.reset();
     var probingDepth = (z - cycle.depth + tool.cornerRadius);
-    onRapid(x,y,cycle.stock);
-    onLinear(x,y,probingDepth,cycle.feedrate)
-  
     var measureString = "EdgeMeasure ";
+
+    zOutput.reset();
+    onRapid(x, y, cycle.stock);
+    onLinear(x, y, probingDepth, cycle.feedrate);
     measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
     measureString += " originShift=" + xyzFormat.format(-1 * (x + approach(cycle.approach1) * startPositionOffset));
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
@@ -1722,8 +1714,8 @@ function onCyclePoint(x, y, z) {
 
     forceXYZ();
     //zOutput.reset();
-    onRapid(x,y,cycle.stock);
-    onLinear(x,y, probingDepth,cycle.feedrate)
+    onRapid(x, y, cycle.stock);
+    onLinear(x, y, probingDepth, cycle.feedrate);
     
     var measureString = "EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
@@ -1741,44 +1733,39 @@ function onCyclePoint(x, y, z) {
    
     // var measureString = "CornerMeasure";
     // measureString += " " + orientation;
-    // measureString += " Inside";    
+    // measureString += " Inside";
     // measureString += " xMeasureYOffset=" + xyzFormat.format(cycle.probeClearance);
     // measureString += " yMeasureXOffset=" + xyzFormat.format(cycle.probeClearance);
     // measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
     // measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    // measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);   
+    // measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     // measureString += " forceSafeHeight"
     // measureString += " skipZMeasure";
     // measureString += " originXShift=" + xyzFormat.format(-x);
     // measureString += " originYShift=" + xyzFormat.format(-y);
-    // writeBlock(measureString);   
+    // writeBlock(measureString);
     break;
   case "probing-xy-outer-corner":
     var probingDepth = (z - cycle.depth + tool.cornerRadius);
     var touchPositionX1 = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
     var touchPositionY1 = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
-  
+    var measureString = "EdgeMeasure ";
 
     zOutput.reset();
-    onRapid(x,y,probingDepth);
-
-    onLinear(x,touchPositionY1, probingDepth,cycle.feedrate);
-
-    var measureString = "EdgeMeasure ";
+    onRapid(x, y, probingDepth);
+    onLinear(x, touchPositionY1, probingDepth, cycle.feedrate);
     measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
     measureString += " originShift=" + xyzFormat.format(-1 * (x + approach(cycle.approach1) * startPositionOffset));
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
     writeBlock(measureString);
     forceXYZ();
-    onLinear(x,touchPositionY1, probingDepth,cycle.feedrate)
-    
-    onLinear(x,y,probingDepth,cycle.feedrate);
-    
+    onLinear(x, touchPositionY1, probingDepth, cycle.feedrate);
+    onLinear(x, y, probingDepth, cycle.feedrate);
     //forceXYZ();
     //zOutput.reset();
     onLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
-    onLinear(touchPositionX1, y, probingDepth,cycle.feedrate);
-    
+    onLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
+
     var measureString = "EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
     measureString += " originShift=" + xyzFormat.format(-1 * (y + approach(cycle.approach1) * startPositionOffset));
@@ -1787,8 +1774,7 @@ function onCyclePoint(x, y, z) {
     forceXYZ();
     onLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
     onLinear(x, y, probingDepth, cycle.feedrate);
-    
-    
+
     // var isXNeagtive = (cycle.approach1 == "negative") ? true : false;
     // var isYNeagtive = (cycle.approach2 == "negative") ? true : false;
     
@@ -1800,17 +1786,17 @@ function onCyclePoint(x, y, z) {
   
     // var measureString = "CornerMeasure";
     // measureString += " " + orientation;
-    // measureString += " Outside";    
+    // measureString += " Outside";
     // measureString += " xMeasureYOffset=" + xyzFormat.format(cycle.probeClearance);
     // measureString += " yMeasureXOffset=" + xyzFormat.format(cycle.probeClearance);
     // measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
     // measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    // measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);   
+    // measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     // measureString += " forceSafeHeight"
     // measureString += " skipZMeasure";
     // measureString += " originXShift=" + xyzFormat.format(-x);
     // measureString += " originYShift=" + xyzFormat.format(-y);
-    // writeBlock(measureString);   
+    // writeBlock(measureString);
     break;
   case "probing-x-plane-angle":
     // writeBlock(gMotionModal.format(1), xOutput.format(x) + ", " + yOutput.format(y) + ", " + zOutput.format(cycle.stock) + ", 0, 0;");
@@ -1883,7 +1869,6 @@ function boreMilling(cycle) {
   if (cycle.numberOfSteps > 2) {
     error("Only 2 steps are allowed for bore-milling.");
   }
-
   var boreCommandString = new Array();
   var depth = xyzFormat.format(cycle.depth);
   
@@ -1893,27 +1878,21 @@ function boreMilling(cycle) {
   // boreCommandString.push("strokeRapidZ=strokeRapidZ");
   // boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
   boreCommandString.push("infeedZ=infeedZ");
-
   if (cycle.numberOfSteps == 2) {
     var xycleaning = cycle.stepover;
     var maxzdepthperstep = tool.fluteLength * 0.8;
     boreCommandString.push("finishingXY=" + xyzFormat.format(xycleaning));
     boreCommandString.push("infeedFinishingZ=" + xyzFormat.format(maxzdepthperstep));
   }
-
   var bottomcleaning = 0;
   // finishingZ = 1;
   writeBlock(boreCommandString.join(" "));
 }
 
 function threadMilling(cycle) {
-
   var threadString = new Array();
   var depth = xyzFormat.format(cycle.depth);
-  
-	var isLeft = ( cycle.threading == "left" )? true :false;
-	
-	
+
   threadString.push("SpecialThread");
   // threadString.push('threadName=threadName');
   threadString.push("nominalDiameter=nominalDiameter");
@@ -1924,12 +1903,12 @@ function threadMilling(cycle) {
   // threadString.push("threadStandard=threadStandard");
   // threadString.push("deburring=ThreadMillingDeburring.NoDeburring");
   // threadString.push("insideOutside=ThreadMillingSide.Inside");
-  // threadString.push("direction=ThreadMillingDirection.RightHandThread");
   threadString.push("finishing=finishing");
-	if(isLeft){
+	if (cycle.threading == "left") {
 		threadString.push("direction=ThreadMillingDirection.LeftHandThread");
-	}
-	
+	} else {
+    threadString.push("direction=ThreadMillingDirection.RightHandThread");
+  }
   writeBlock(threadString.join(" "));
 }
 
