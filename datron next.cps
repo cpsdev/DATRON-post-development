@@ -890,11 +890,13 @@ function getWorkPlaneMachineABC(workPlane) {
 }
 
 function onSection() {
+	/*
   if (isProbeOperation(currentSection)) {
     // TAG: remove once probing is supported properly, waiting for Datron
     error(localize("Probing is not supported for now."));
     return;
   }
+	*/
 
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
@@ -949,6 +951,7 @@ function onSection() {
   if (properties.useDynamic) {
 
     var dynamic = 5;
+		/*
     if (operationTolerance <= 0.02) {
       dynamic = 4;
     }
@@ -961,7 +964,7 @@ function onSection() {
     if (operationTolerance <= 0.003) {
       dynamic = 1;
     }
-		
+		*/
     writeBlock("Dynamic = " + dynamic);
   }
   if (properties.waitAfterOperation) {
@@ -1490,9 +1493,7 @@ function onCyclePoint(x, y, z) {
   case "bore-milling":
     for (var i = 0; i <= cycle.repeatPass; ++i) {
       forceXYZ();
-      onRapid(x, y, null);
-      onRapid(x, y, cycle.retract);
-      onLinear(x, y, cycle.stock, cycle.feedrate);
+      onRapid(x, y, cycle.clearance);    
       boreMilling(cycle);
       onRapid(x, y, cycle.clearance);
     }
@@ -1500,18 +1501,14 @@ function onCyclePoint(x, y, z) {
   case "thread-milling":
     for (var i = 0; i <= cycle.repeatPass; ++i) {
       forceXYZ();
-      onRapid(x, y, null);
-      onRapid(x, y, cycle.retract);
-      onLinear(x, y, cycle.stock, cycle.feedrate);
+      onRapid(x, y, cycle.clearance);   
       threadMilling(cycle);
       onRapid(x, y, cycle.clearance);
     }
     break;
   case "drilling":
     forceXYZ();
-    onRapid(x, y, null);
-    onRapid(x, y, cycle.retract);
-    onLinear(x, y, cycle.stock, cycle.feedrate);
+    onRapid(x, y, cycle.clearance);  
     drilling(cycle);
     onRapid(x, y, cycle.clearance);
     break;
@@ -1859,8 +1856,8 @@ function chipBreaking(cycle) {
   
   boreCommandString.push("Drill");
   boreCommandString.push("depth=" + depth);
-  // boreCommandString.push("strokeRapidZ=strokeRapidZ");
-  // boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
+  boreCommandString.push("strokeRapidZ=" + xyzFormat.format(cycle.clearance - cycle.retract));
+  boreCommandString.push("strokeCuttingZ=" + xyzFormat.format(cycle.retract - cycle.stock));
   boreCommandString.push("infeedZ=infeedZ");
   writeBlock(boreCommandString.join(" "));
 }
@@ -1869,15 +1866,16 @@ function boreMilling(cycle) {
   if (cycle.numberOfSteps > 2) {
     error("Only 2 steps are allowed for bore-milling.");
   }
+
   var boreCommandString = new Array();
-  var depth = xyzFormat.format(cycle.depth);
-  
+  var depth = xyzFormat.format(cycle.depth);  
   boreCommandString.push("DrillMilling");
   boreCommandString.push("diameter=diameter");
-  boreCommandString.push("depth=" + depth);
-  // boreCommandString.push("strokeRapidZ=strokeRapidZ");
-  // boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
+  boreCommandString.push("depth=" + depth);  
   boreCommandString.push("infeedZ=infeedZ");
+  boreCommandString.push("strokeRapidZ=" + xyzFormat.format(cycle.clearance - cycle.retract));
+  boreCommandString.push("strokeCuttingZ=" + xyzFormat.format(cycle.retract - cycle.stock));
+  
   if (cycle.numberOfSteps == 2) {
     var xycleaning = cycle.stepover;
     var maxzdepthperstep = tool.fluteLength * 0.8;
@@ -1898,8 +1896,8 @@ function threadMilling(cycle) {
   threadString.push("nominalDiameter=nominalDiameter");
   threadString.push("pitch=pitch");
   threadString.push("depth=" + depth);
-  // threadString.push("strokeRapidZ=strokeRapidZ");
-  // threadString.push("strokeCuttingZ=strokeCuttingZ");
+  threadString.push("strokeRapidZ=" + xyzFormat.format(cycle.clearance - cycle.retract));
+  threadString.push("strokeCuttingZ=" + xyzFormat.format(cycle.retract - cycle.stock));
   // threadString.push("threadStandard=threadStandard");
   // threadString.push("deburring=ThreadMillingDeburring.NoDeburring");
   // threadString.push("insideOutside=ThreadMillingSide.Inside");
