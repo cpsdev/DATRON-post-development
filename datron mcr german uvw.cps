@@ -37,24 +37,34 @@ allowedCircularPlanes = (1 << PLANE_XY); // allow XY plane only
 properties = {
   writeMachine: true, // write machine
   writeVersion: false, // include version info
-  showOperationDialog: true, // shows a start dialog on the control to select the operation to start with
+  showOperationDialog: "dropdown", // shows a start dialog on the control to select the operation to start with
   useParametricFeed: true, // specifies that feed should be output using Q values
   showNotes: false, // specifies that operation notes should be output
   useSmoothing: true, // specifies if smoothing should be used or not
   useDynamic: true, // specifies using dynamic mode or not
   useParkPosition: true, // specifies to use park position at the end of the program
   useTimeStamp: false, // specifies to output time stamp
+  language: "de", // specifies the language "en" or "de"
   writeCoolantCommands: false, // en/disable coolant code output for the entire program
-  _got4thAxis: false, // specifies if the machine has a 4th axis
+  _got4thAxis: true, // specifies if the machine has a 4th axis
   _4thAxisRotatesAroundX: true, // specifies if the 4th axis rotates around X or Y
-  _got5thAxis: false // specifies if the machine has a 5th axis
+  _got5thAxis: true // specifies if the machine has a 5th axis
 };
 
 // user-defined property definitions
 propertyDefinitions = {
   writeMachine: {title:"Write machine", description:"Output the machine settings in the header of the code.", group:0, type:"boolean"},
   writeVersion: {title:"Write version", description:"Write the version number in the header of the code.", group:0, type:"boolean"},
-  showOperationDialog: {title:"Show operation dialog", description:"Shows a start dialog on the control which allows you to select the operation to start with.", type:"boolean"},
+  showOperationDialog: {
+    title: "Show operation dialog",
+    description:"Shows a start dialog on the control which allows you to select the operation to start with.",
+    type:"enum",
+    values:[
+      {id: "disabled", title: "Disabled"},
+      {id: "dropdown", title:"Dropdown style"},
+      {id: "checkbox", title:"Checkbox style"}
+    ]
+  },
   useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
   showNotes: {title:"Show notes", description:"Writes operation notes as comments in the outputted code.", type:"boolean"},
   useSmoothing: {title:"Use smoothing", description:"Enable to use smoothing in the NC program.", type:"boolean"},
@@ -94,9 +104,9 @@ var sOutput = createVariable({prefix:"S", force:true}, rpmFormat);
 var gMotionModal = createModal({prefix:"Axyz ", force:true, suffix:","}, xyzFormat); // modal group 1 // G0-G3, ...
 
 // fixed settings
-var language = "de"; // supported languages are: "en", "de"
 var useRTCP = true; // en/disable calculation for having the datum origin out of center of rotary axis for 5 axis kinematics
 var useInverseTimeFeed = false; // beta, keep false
+var maxMaskLength = 40;
 
 // collected state
 var currentWorkOffset;
@@ -150,8 +160,8 @@ function getMultiaxisFeed(_x, _y, _z, _a, _b, _c, feed) {
 function getFeedDPM(_moveLength, _feed) {
   // moveLength[0] = Tool tip, [1] = XYZ, [2] = ABC
 
-  if (false) { // TCP mode is supported, output feed as FPM
-    return feed;
+  if (currentSection.getOptimizedTCPMode() == 0) { // TCP mode is supported, output feed as FPM
+    return _feed;
   } else { // DPM feedrate calculation
     var moveTime = ((_moveLength[0] < 1.e-6) ? 0.001 : _moveLength[0]) / _feed;
     var length = Math.sqrt(Math.pow(_moveLength[1], 2.0) + Math.pow((toDeg(_moveLength[2]) * dpmBPW), 2.0));
@@ -265,8 +275,11 @@ function getMoveLength(_x, _y, _z, _a, _b, _c) {
   moveLength[0] = linearLength + radialLength;
   moveLength[1] = Vector.diff(endXYZ, startXYZ).length;
   moveLength[2] = 0;
+
+  var start = new Array(startABC.x, startABC.y, startABC.z);
+  var end = new Array(endABC.x, endABC.y, endABC.z);
   for (var i = 0; i < 3; ++i) {
-    var delta = Math.abs(endABC[i] - startABC[i]);
+    var delta = Math.abs(end[i] - start[i]);
     if (delta > Math.PI) {
       delta = 2 * Math.PI - delta;
     }
@@ -326,11 +339,13 @@ function onOpen() {
     var aAxis;
     if (properties._got4thAxis && properties._got5thAxis) {
       aAxis = createAxis(
-        {coordinate:properties._got5thAxis ? 0 : 1,
+        {
+          coordinate:properties._got5thAxis ? 0 : 1,
         table:true,
         axis:[properties._4thAxisRotatesAroundX ? -1 : 0, properties._4thAxisRotatesAroundX ? 0 : -1, 0],
         range:[properties._got5thAxis ? -100 : -360, properties._got5thAxis ? 0 : 360],
-        preference:-1}
+          preference:-1
+        }
       );
     } else {
       aAxis = createAxis({coordinate:1, table:true, axis:[properties._4thAxisRotatesAroundX ? 1 : 0, properties._4thAxisRotatesAroundX ? 0 : 1, 0], range:[-360, 360], preference:1});
@@ -425,8 +440,8 @@ function writeProgramHeader() {
   }
   writeln("");
 
-  writeln("!Please make sure that the language on your control is set to " + "\"" + language + "\"" + "!");
-  switch (language) {
+  writeln("!Please make sure that the language on your control is set to " + "\"" + properties.language + "\"" + "!");
+  switch (properties.language) {
   case "en":
     writeBlock("_sprache 1;");
     break;
@@ -453,14 +468,23 @@ function writeProgramHeader() {
   var submacrosDeclaration = new Array();
   var dialogsDeclaration = new Array();
   
-  if (properties.showOperationDialog) {
+  if (properties.showOperationDialog != "disabled") {
     variablesDeclaration.push("optional_stop");
+    if (properties.showOperationDialog == "checkbox") {
+      if (getNumberOfSections() >= maxMaskLength) {
+        submacrosDeclaration.push("Initvariables");
+      }
+    }
   }
   variablesDeclaration.push("$Message");
 
   dialogsDeclaration.push("_maske _haupt, " + "1000" + ", 0, " + "\"" + translate("Submacro") + " " + translate("Description") + "\"");
-  if (properties.showOperationDialog) {
+  if (properties.showOperationDialog != "disabled") {
+    if (properties.showOperationDialog == "dropdown") {
     dialogsDeclaration.push("_feld optional_stop, 1, 0, 0, 0, 1, 2, 0," + " \"" + "optional_stop" + "\"" + "," + " \"" + "optional_stop" + "\"");
+    } else {
+      dialogsDeclaration.push("_feld optional_stop, 1, 0, 1, 0, 1, 2, 1," + " \"" + "optional_stop" + "\"" + "," + " \"" + "optional_stop" + "\"");
+    }
   }
 
   //write variables declaration
@@ -471,7 +495,7 @@ function writeProgramHeader() {
   }
 
   var numberOfSections = getNumberOfSections();
-  if (properties.showOperationDialog) {
+  if (properties.showOperationDialog == "dropdown") {
     var dropDownElements = new Array();
     variablesDeclaration.push("startOperation");
   }
@@ -483,8 +507,15 @@ function writeProgramHeader() {
     var sectionID = i + 1;
     variablesDeclaration.push("Op_" + formatVariable(getOperationDescription(section)));
     submacrosDeclaration.push("Sm_" + formatVariable(getOperationDescription(section)));
-    if (properties.showOperationDialog) {
+    if (properties.showOperationDialog == "dropdown") {
       dropDownElements.push(formatVariable(getOperationDescription(section)) + "<" + sectionID + ">");
+    } else if (properties.showOperationDialog == "checkbox") {
+      if (getNumberOfSections() < maxMaskLength) {
+        dialogsDeclaration.push("_feld Op_" + formatVariable(getOperationDescription(section)) + ", 1, 0, 1, 0, 1, 2, 1," + " \"" +
+          formatVariable(getOperationDescription(section)) + "\"" + "," + " \"" +
+          formatVariable(getOperationDescription(section)) + "\""
+        );
+      }
     }
     if (properties.useParametricFeed) {
       activeFeeds = initializeActiveFeeds(section);
@@ -498,7 +529,7 @@ function writeProgramHeader() {
     }
   }
   
-  if (properties.showOperationDialog) {
+  if (properties.showOperationDialog == "dropdown") {
     dropDownDialog += dropDownElements.join(", ");
     dropDownDialog += ">\", \"Select the operation to start with. \"";
     dialogsDeclaration.push(dropDownDialog);
@@ -513,7 +544,7 @@ function writeProgramHeader() {
     variablesDeclaration.push("X_delta");
     variablesDeclaration.push("Y_delta");
     variablesDeclaration.push("Z_delta");
-    variablesDeclaration.push("U_delta");
+    //variablesDeclaration.push("U_delta");
     variablesDeclaration.push("V_delta");
     variablesDeclaration.push("W_delta");
     variablesDeclaration.push("X");
@@ -532,7 +563,7 @@ function writeProgramHeader() {
     variablesDeclaration.push("X_temp");
     variablesDeclaration.push("Y_temp");
     variablesDeclaration.push("Z_temp");
-    variablesDeclaration.push("U_temp");
+    //variablesDeclaration.push("U_temp");
     variablesDeclaration.push("V_temp");
     variablesDeclaration.push("W_temp");
     variablesDeclaration.push("Isinitialposition");
@@ -599,6 +630,16 @@ function writeProgramHeader() {
     writeln("");
   }
 
+  if (properties.showOperationDialog == "checkbox") {
+    if (numberOfSections >= maxMaskLength) {
+      writeBlock("(");
+      for (var i = 0; i < numberOfSections; ++i) {
+        var section = getSection(i);
+        writeBlock("Op_" + formatVariable(getOperationDescription(section)) + " = 1");
+      }
+      writeln(") Initvariables;");
+    }
+  }
   if (useRTCP && (properties._got4thAxis && properties._got5thAxis)) {
     createPositionInitSubmacro();
     createEndmacro();
@@ -618,6 +659,11 @@ function writeProgramHeader() {
 function writeMainProgram() {
 
   var numberOfSections = getNumberOfSections();
+  if (properties.showOperationDialog == "checkbox") {
+    if (numberOfSections >= maxMaskLength) {
+      writeBlock(translate("Submacro") + " Initvariables;");
+    }
+  }
 
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
@@ -628,8 +674,11 @@ function writeMainProgram() {
     var maskName = formatVariable("Op_" + Description);
 
     writeComment("##########" + Description + "##########");
-    //writeBlock(translate("Condition") + " " + maskName + ", 0, 1, 0, " + sectionID + ";");
-    writeBlock(translate("Label") + " " + sectionID + ";");
+    if (properties.showOperationDialog == "checkbox") {
+      writeBlock(translate("Condition") + " " + maskName + ", 0, 1, 0, " + sectionID + ";");
+    } else if (properties.showOperationDialog == "dropdown") {
+      writeBlock(translate("Label") + " " + sectionID + ";");
+    }
 
     var tool = section.getTool();
     if (properties.showNotes && section.hasParameter("notes")) {
@@ -707,6 +756,9 @@ function writeMainProgram() {
     }
 
     writeBlock(translate("Submacro") + " " + sectionName + ";");
+    if (properties.showOperationDialog == "checkbox") {
+      writeBlock(translate("Label") + " " + sectionID + ";");
+    }
   }
 }
 
@@ -965,20 +1017,20 @@ function setWorkPlane(abc) {
 
   gMotionModal.reset();
   if (useRTCP && (properties._got4thAxis && properties._got5thAxis)) {
-    writeBlock("U_temp = " + (machineConfiguration.isMachineCoordinate(0) ? abcFormat.format(abc.x) : "u6p") + " - U_delta;");
-    writeBlock("V_temp = " + (machineConfiguration.isMachineCoordinate(1) ? abcFormat.format(abc.y) : "v6p") + " - V_delta;");
+    //writeBlock("U_temp = " + (machineConfiguration.isMachineCoordinate(0) ? abcFormat.format(abc.x) : "u6p") + " - U_delta;");
+    writeBlock("V_temp = " + (machineConfiguration.isMachineCoordinate(0) ? abcFormat.format(abc.x) : "v6p") + " - V_delta;");
     writeBlock("W_temp = " + (machineConfiguration.isMachineCoordinate(2) ? abcFormat.format(abc.z) : "w6p") + " - W_delta;");
-    writeBlock("Axyzuvw 1, x6p, y6p, z6p, U_temp, V_temp, W_temp;");
+    writeBlock("Axyzuvw 1, x6p, y6p, z6p, u6p, V_temp, W_temp;");
     //writeBlock("Axyzuvw 1, x6p, y6p, z6p, u6p, " + (machineConfiguration.isMachineCoordinate(1) ? abcFormat.format(abc.y) : "v6p") + ", w6p;");
     if (machineConfiguration.isMultiAxisConfiguration() && !currentSection.isMultiAxis()) {
       writeBlock(translate("Submacro") + " Transformoffset 0, ",
+      abcFormat.format(0) +", ",
       abcFormat.format(abc.x) +", ",
-      abcFormat.format(abc.y) +", ",
       abcFormat.format(abc.z) +";");
     }
   } else {
-    var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(abc.x) : "u6p");
-    var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(abc.y) : "v6p");
+    var a = 0;
+    var b = (machineConfiguration.isMachineCoordinate(0) ? bOutput.format(abc.x) : "v6p");
     var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(abc.z) : "w6p");
     writeBlock("Axyzuvw 1, x6p, y6p, z6p, " + a + ", " + b + ", " +  c + ";");
   }
@@ -1066,19 +1118,11 @@ function createRtcpSimuSubmacro() {
   
   writeBlock(";!Rotation around A!;");
   writeBlock("X_trans = X_temp;");
-  writeBlock("Y_trans = Y_temp * Cos ( A ) - Z_temp * Sin ( A );");
-  writeBlock("Z_trans = Y_temp * Sin ( A ) + Z_temp * Cos ( A );");
+  writeBlock("Y_trans = Y_temp * Cos ( B ) - Z_temp * Sin ( B );");
+  writeBlock("Z_trans = Y_temp * Sin ( B ) + Z_temp * Cos ( B );");
   writeBlock("X_temp = X_trans;");
   writeBlock("Y_temp = Y_trans;");
   writeBlock("Z_temp = Z_trans;");
-
-  // writeBlock(";!Rotation around B!;");
-  // writeBlock("X_trans = Z_temp * Sin ( B ) + X_temp * Cos ( B );");
-  // writeBlock("Y_trans = Y_temp;");
-  // writeBlock("Z_trans = Z_temp * Cos ( B ) - X_temp * Sin ( B );");
-  // writeBlock("X_temp = X_trans;");
-  // writeBlock("Y_temp = Y_trans;");
-  // writeBlock("Z_temp = Z_trans;");
 
   writeBlock(";!Calc new Position!;");
   writeBlock("X_new = X - X_trans;");
@@ -1091,14 +1135,14 @@ function createRtcpSimuSubmacro() {
 	writeBlock("Relsp Znr;");
   writeBlock("Z_new = ( ( Isinitialposition + 1 ) % 2 ) * ( Z - Z_trans ) + Isinitialposition * (Z6p + Zdelta);");
 
-  writeBlock("U_temp = A - U_delta;");
+  //writeBlock("U_temp = A - U_delta;");
   writeBlock("V_temp = B - V_delta;");
   writeBlock("W_temp = C - W_delta;");
 
   if (properties._got4thAxis && properties._got5thAxis) {
-     writeBlock("Axyzuvw Israpid, X_new, Y_new, Z_new, U_temp, 0, W_temp;");
+     writeBlock("Axyzuvw Israpid, X_new, Y_new, Z_new, 0, V_temp, W_temp;");
   } else {
-     writeBlock("Axyzuvw Israpid, X_new, Y_new, Z_new, 0, U_temp, 0;");
+     writeBlock("Axyzuvw Israpid, X_new, Y_new, Z_new, 0, V_temp, 0;");
   }
 
   writeBlock(") Transformpath;");
@@ -1109,7 +1153,7 @@ function createRtcpTransformationSubmacro() {
   writeBlock("(");
   writeBlock("Position 19, 2;");
 /*
-  if (properties._got5thAxis) { //TAG
+  if (properties._got5thAxis) {
      writeBlock("Position 19, 2;");
   } else if (properties._got4thAxis && properties._got5thAxis) {
     writeBlock("Position 21, 2;");
@@ -1129,19 +1173,11 @@ function createRtcpTransformationSubmacro() {
 
   writeBlock(";!Rotation around A!;");
   writeBlock("X_trans = X_temp;");
-  writeBlock("Y_trans = Y_temp * Cos ( A ) - Z_temp * Sin ( A );");
-  writeBlock("Z_trans = Y_temp * Sin ( A ) + Z_temp * Cos ( A );");
+  writeBlock("Y_trans = Y_temp * Cos ( B ) - Z_temp * Sin ( B );");
+  writeBlock("Z_trans = Y_temp * Sin ( B ) + Z_temp * Cos ( B );");
   writeBlock("X_temp = X_trans;");
   writeBlock("Y_temp = Y_trans;");
   writeBlock("Z_temp = Z_trans;");
-
-  // writeBlock(";!Rotation around B!;");
-  // writeBlock("X_trans = Z_temp * Sin ( B ) + X_temp * Cos ( B );");
-  // writeBlock("Y_trans = Y_temp;");
-  // writeBlock("Z_trans = Z_temp * Cos ( B ) - X_temp * Sin ( B );");
-  // writeBlock("X_temp = X_trans;");
-  // writeBlock("Y_temp = Y_trans;");
-  // writeBlock("Z_temp = Z_trans;");
 
   writeBlock(";!Calc new Position!;");
   writeBlock("X_new = X6p + X_trans;");
@@ -1158,13 +1194,13 @@ function createPositionInitSubmacro() {
   writeBlock("X_initial_pos = X6p;");
   writeBlock("Y_initial_pos = Y6p;");
   writeBlock("Z_initial_pos = Z6p;");
-  writeBlock("A_initial_pos = u6p;");
+  //writeBlock("A_initial_pos = u6p;");
   writeBlock("B_initial_pos = v6p;");
   writeBlock("C_initial_pos = w6p;");
 
   writeBlock("Position 19, 2;");
 /*
-  if (properties._got5thAxis) { //TAG
+  if (properties._got5thAxis) {
      writeBlock("Position 19, 2;");
   } else if (properties._got4thAxis && properties._got5thAxis) {
     writeBlock("Position 21, 2;");
@@ -1173,7 +1209,7 @@ function createPositionInitSubmacro() {
   writeBlock("X_delta = X_initial_pos - X6p;");
   writeBlock("Y_delta = Y_initial_pos - Y6p;");
   writeBlock("Z_delta = Z_initial_pos - Z6p;");
-  writeBlock("U_delta = A_initial_pos - u6p;");
+  //writeBlock("U_delta = A_initial_pos - u6p;");
   writeBlock("V_delta = B_initial_pos - v6p;");
   writeBlock("W_delta = C_initial_pos - w6p;");
   writeBlock(") Initposition;");
@@ -1329,14 +1365,14 @@ function onSection() {
 
   if (currentSection.isMultiAxis()) {
     var abc = currentSection.getInitialToolAxisABC();
-    var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(abc.x) : "u6p");
-    var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(abc.y) : "v6p");
+    var a = 0;
+    var b = (machineConfiguration.isMachineCoordinate(0) ? bOutput.format(abc.x) : "v6p");
     var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(abc.z) : "w6p");
 
     if (useRTCP && (properties._got4thAxis && properties._got5thAxis)) {
       writeBlock("Position 19, 2;");
       /*
-      if (properties._got5thAxis) { // TAG
+      if (properties._got5thAxis) {
          writeBlock("Position 19, 2;");
       } else if (properties._got4thAxis && properties._got5thAxis) {
         writeBlock("Position 21, 2;");
@@ -2028,8 +2064,8 @@ function onRapid5D(_x, _y, _z, _a, _b, _c) {
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
   var z = zOutput.format(_z);
-  var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "u6p");
-  var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(_b) : "v6p");
+  var a = 0;
+  var b = (machineConfiguration.isMachineCoordinate(0) ? bOutput.format(_a) : "v6p");
   var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(_c) : "w6p");
 
   if (currentSection.isOptimizedForMachine() && (useRTCP && (properties._got4thAxis && properties._got5thAxis))) {
@@ -2052,8 +2088,8 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
   var z = zOutput.format(_z);
-  var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "u6p");
-  var b = (machineConfiguration.isMachineCoordinate(1) ? bOutput.format(_b) : "v6p");
+  var a = 0;
+  var b = (machineConfiguration.isMachineCoordinate(0) ? bOutput.format(_a) : "v6p");
   var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(_c) : "w6p");
 
   // get feed rate number
@@ -2135,7 +2171,7 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
 }
 
 function translate(text) {
-  switch (language) {
+  switch (properties.language) {
   case "en":
     return text;
   case "de":
@@ -2299,7 +2335,7 @@ function onSectionEnd() {
   if (isProbeOperation(currentSection)) {
     writeBlock(translate("Rpm") + " 1, 30, 0, 30;");
   }
-  if (!isLastSection() && properties.showOperationDialog) {
+  if (!isLastSection() && properties.showOperationDialog != "disabled") {
     writeBlock("$Message = \"Start next Operation\";");
     writeBlock(translate("Condition") + " optional_stop, 0, 1, 0, 9999;");
     writeBlock(translate("Message") + " $Message, 0, 0, 0;");
@@ -2326,7 +2362,7 @@ function onClose() {
   var model = machineConfiguration.getModel();
   var description = machineConfiguration.getDescription();
 
-  writeComment("Please make sure that the language on your control is set to " + "\"" + language + "\"");
+  writeComment("Please make sure that the language on your control is set to " + "\"" + properties.language + "\"");
   if (properties.writeMachine && (vendor || model || description)) {
     writeComment(localize("Machine"));
     if (vendor) {
@@ -2345,8 +2381,9 @@ function onClose() {
   if (useRTCP && (properties._got4thAxis && properties._got5thAxis)) {
    writeBlock(translate("Submacro") + " Initposition;");
   }
+
   //write jump to start operation
-  if (properties.showOperationDialog) {
+  if (properties.showOperationDialog == "dropdown") {
     writeBlock(translate("Condition") + " 0, 0, 0 , startOperation, startOperation;");
   }
   

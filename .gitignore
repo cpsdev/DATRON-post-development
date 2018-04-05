@@ -5,3 +5,4 @@ DATRON SimPL.CPS
 *.bak
 old/DATRON SimPL A Axis.CPS
 export cnc file to vs code.cps
+*.json
