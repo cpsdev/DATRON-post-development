@@ -27,6 +27,15 @@ var radiusCompensationTable = new Table(
   "Invalid radius compensation"
 );
 
+minimumChordLength = spatial(0.01, MM);
+minimumCircularRadius = spatial(0.01, MM);
+maximumCircularRadius = spatial(1000, MM);
+minimumCircularSweep = toRad(0.01);
+maximumCircularSweep = toRad(120);
+allowHelicalMoves = true;
+allowedCircularPlanes = (1 << PLANE_XY); // allow XY plane only
+
+
 var xyzFormat = createFormat({decimals:(unit == MM ? 3 : 4), forceSign:true});
 var feedFormat = createFormat({decimals:(unit == MM ? 0 : 2), scale:(unit == MM ? 1 : 10)});
 var rpmFormat = createFormat({decimals:0});
@@ -38,6 +47,10 @@ var dimensionFormat = createFormat({decimals:(unit == MM ? 3 : 5), forceDecimal:
 var xOutput = createVariable({prefix:" X="}, xyzFormat);
 var yOutput = createVariable({prefix:" Y="}, xyzFormat);
 var zOutput = createVariable({prefix:" Z="}, xyzFormat);
+var iOutput = createVariable({prefix:" dX=", force : true}, feedFormat);
+var jOutput = createVariable({prefix:" dY=", force : true}, feedFormat);
+var kOutput = createVariable({prefix:" dZ="}, feedFormat);
+
 var feedOutput = createVariable({prefix:"Feed="}, feedFormat);
 
 var blockNumber = 0;
@@ -323,3 +336,53 @@ function formatVariable(text) {
       " @");
     writeBlock(" ");
   }
+
+  
+function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
+  var f = feedOutput.format(feed);
+  if(f){
+      writeBlock(f);
+  }
+  
+  // if (pendingRadiusCompensation >= 0) {
+  //   error(localize("radius compensation cannot be activated/deactivated for a circular move."));
+  //   return;
+  // }
+
+  var start = getCurrentPosition();
+
+  if (isFullCircle()) {
+    if (isHelical()) {
+      linearize(tolerance);
+      return;
+    }
+    // TAG: are 360deg arcs supported
+    switch (getCircularPlane()) {
+    case PLANE_XY:
+      writeBlock("Arc" +
+        (clockwise ? " CW" : " CCW") +
+        xOutput.format(x) +
+        iOutput.format(cx - start.x) +
+        jOutput.format(cy - start.y)
+      );
+      break;
+    default:
+      linearize(tolerance);
+    }
+  } else {
+    switch (getCircularPlane()) {
+    case PLANE_XY:
+      writeBlock("Arc" +
+        (clockwise ? " CW" : " CCW") +
+        xOutput.format(x) +
+        yOutput.format(y) +
+        zOutput.format(z) +
+        iOutput.format(cx - start.x) +
+        jOutput.format(cy - start.y)
+      );
+      break;
+    default:
+      linearize(tolerance);
+    }
+  }
+}
