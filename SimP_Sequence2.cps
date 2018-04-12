@@ -16,8 +16,8 @@ vendorUrl = "http://www.autodesk.com";
 legal = "Copyright (C) 2012-2014 by Autodesk, Inc.";
 certificationLevel = 2;
 
-extension = "h";
-setCodePage("ansi");
+extension = "simpl";
+setCodePage("utf-8");
 
 var spindleAxisTable = new Table(["X", "Y", "Z"], {force:true});
 
