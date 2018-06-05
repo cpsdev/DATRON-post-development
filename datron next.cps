@@ -25,7 +25,7 @@ setCodePage("utf-8");
 capabilities = CAPABILITY_MILLING;
 tolerance = spatial(0.002, MM);
 
-minimumChordLength = spatial(0.01, MM);
+minimumChordLength = spatial(0.25, MM);
 minimumCircularRadius = spatial(0.01, MM);
 maximumCircularRadius = spatial(1000, MM);
 minimumCircularSweep = toRad(0.01);
@@ -940,7 +940,7 @@ function onSection() {
 
 	//load the matching workOffset
 	var workOffset = currentSection.getWorkOffset();
-	if (workOffset!= 0) {
+	if (workOffset != 0) {
 		writeBlock("LoadWcs name=\"" + workOffset +"\"");
 	}
 	
@@ -1378,8 +1378,8 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
   var b = bOutput.format(_b);
   var c = cOutput.format(_c);
   var f = getFeed(feed);
-  
-  writeBlock(getFeed(feed));
+
+  writeBlock(f);
   if (x || y || z || a || b || c) {
     var xyzabc = x + y + z + a + b + c;
     writeBlock("Line" + xyzabc);
@@ -1486,6 +1486,11 @@ function onCyclePoint(x, y, z) {
   var feedString = feedOutput.format(cycle.feedrate);
 
   if (isProbeOperation(currentSection)) {
+    if (!isSameDirection(currentSection.workPlane.forward, new Vector(0, 0, 1)) && (!cycle.probeMode || (cycle.probeMode == 0))) {
+      error(localize("Updating WCS / work offset using probing is only supported by the CNC in the WCS frame."));
+      return;
+    }
+  
     var startPositionOffset = cycle.probeClearance + tool.cornerRadius;
   }
 
@@ -1493,7 +1498,7 @@ function onCyclePoint(x, y, z) {
   case "bore-milling":
     for (var i = 0; i <= cycle.repeatPass; ++i) {
       forceXYZ();
-      onRapid(x, y, cycle.clearance);    
+      onRapid(x, y, cycle.clearance);
       boreMilling(cycle);
       onRapid(x, y, cycle.clearance);
     }
@@ -1501,14 +1506,14 @@ function onCyclePoint(x, y, z) {
   case "thread-milling":
     for (var i = 0; i <= cycle.repeatPass; ++i) {
       forceXYZ();
-      onRapid(x, y, cycle.clearance);   
+      onRapid(x, y, cycle.clearance);
       threadMilling(cycle);
       onRapid(x, y, cycle.clearance);
     }
     break;
   case "drilling":
     forceXYZ();
-    onRapid(x, y, cycle.clearance);  
+    onRapid(x, y, cycle.clearance);
     drilling(cycle);
     onRapid(x, y, cycle.clearance);
     break;
@@ -1845,8 +1850,8 @@ function drilling(cycle) {
   
   boreCommandString.push("Drill");
   boreCommandString.push("depth=" + depth);
-  // boreCommandString.push("strokeRapidZ=strokeRapidZ");
-  // boreCommandString.push("strokeCuttingZ=strokeCuttingZ");
+  boreCommandString.push("strokeRapidZ=" + xyzFormat.format(cycle.clearance - cycle.retract));
+  boreCommandString.push("strokeCuttingZ=" + xyzFormat.format(cycle.retract - cycle.stock));
   writeBlock(boreCommandString.join(" "));
 }
 
@@ -1868,10 +1873,10 @@ function boreMilling(cycle) {
   }
 
   var boreCommandString = new Array();
-  var depth = xyzFormat.format(cycle.depth);  
+  var depth = xyzFormat.format(cycle.depth);
   boreCommandString.push("DrillMilling");
   boreCommandString.push("diameter=diameter");
-  boreCommandString.push("depth=" + depth);  
+  boreCommandString.push("depth=" + depth);
   boreCommandString.push("infeedZ=infeedZ");
   boreCommandString.push("strokeRapidZ=" + xyzFormat.format(cycle.clearance - cycle.retract));
   boreCommandString.push("strokeCuttingZ=" + xyzFormat.format(cycle.retract - cycle.stock));
