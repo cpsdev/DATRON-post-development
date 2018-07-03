@@ -106,7 +106,7 @@ var activeMovements; // do not use by default
 var currentFeedId;
 
 // format date + time
-var timeFormat = createFormat({decimals:0, force:true, width:2, zeropad:true});
+var timeFormat = createFormat({decimals:0, width:2, zeropad:true});
 var now = new Date();
 var nowDay = now.getDate();
 var nowMonth = now.getMonth() + 1;
@@ -1219,7 +1219,7 @@ function onDwell(seconds) {
 }
 
 function onSpindleSpeed(spindleSpeed) {
-  writeBlock("Rpm=" + rpmFormat.format(tool.spindleRPM));
+  writeBlock("Rpm=" + rpmFormat.format(spindleSpeed));
 }
 
 var pendingRadiusCompensation = -1;
