@@ -15,7 +15,7 @@ vendor = "DATRON";
 vendorUrl = "http://www.datron.com";
 legal = "Copyright (C) 2012-2018 by Autodesk, Inc.";
 certificationLevel = 2;
-minimumRevision = 24000;
+minimumRevision = 40783;
 
 longDescription = "Post for Datron next control. This post is for use with the Datron neo CNC.";
 
@@ -1024,9 +1024,11 @@ function onSection() {
 
   if (!isProbeOperation(currentSection)) {
     // set rpm
-    if ((tool.spindleRPM < 6000) && (tool.spindleRPM > 0)) {
-      tool.spindleRPM = 6000;
+    /*
+    if ((spindleSpeed < 6000) && (spindleSpeed > 0)) {
+      spindleSpeed = 6000;
     }
+    */
 
     // set coolant after we have positioned at Z
     setCoolant(tool.coolant);
@@ -1034,12 +1036,12 @@ function onSection() {
     // tool changer command
     if (properties.writeToolTable) {
       writeBlock("Tool name=" + "\"" + createToolName(tool) + "\"" +
-        " newRpm=" + rpmFormat.format(tool.spindleRPM) +
+        " newRpm=" + rpmFormat.format(spindleSpeed) +
         " skipRestoring"
       );
     } else {
       writeBlock("Tool = " + toolOutput.format(tool.number) +
-        " newRpm=" + rpmFormat.format(tool.spindleRPM) +
+        " newRpm=" + rpmFormat.format(spindleSpeed) +
         " skipRestoring"
       );
     }
@@ -1180,7 +1182,7 @@ function onSection() {
   }
 
   if (!isProbeOperation(currentSection)) {
-		writeBlock(tool.spindleRPM > 100 ? "Spindle On" : "Spindle Off");
+		writeBlock(spindleSpeed > 100 ? "Spindle On" : "Spindle Off");
   } else {
     writeBlock("Spindle Off");
     writeBlock("PrepareXyzSensor");
@@ -1219,6 +1221,7 @@ function onDwell(seconds) {
 }
 
 function onSpindleSpeed(spindleSpeed) {
+  // writeBlock("Rpm=" + rpmFormat.format((spindleSpeed < 6000) ? 6000 : spindleSpeed));
   writeBlock("Rpm=" + rpmFormat.format(spindleSpeed));
 }
 
@@ -1526,6 +1529,17 @@ function onCyclePoint(x, y, z) {
     onRapid(x, y, cycle.clearance);
     break;
 */
+  case "tapping":
+  case "left-tapping":
+  case "right-tapping":
+  case "tapping-with-chip-breaking":
+  case "left-tapping-with-chip-breaking":
+  case "right-tapping-with-chip-breaking":
+    forceXYZ();
+    onRapid(x, y, cycle.clearance);
+    tapping(cycle);
+    onRapid(x, y, cycle.clearance);
+    break;
   case "probing-x":
     forceXYZ();
     onRapid(x, y, cycle.stock);
@@ -1915,6 +1929,25 @@ function threadMilling(cycle) {
   writeBlock(threadString.join(" "));
 }
 
+function tapping(cycle) {
+  var tappingString = new Array();
+  var depth = xyzFormat.format(cycle.depth);
+  tappingString.push("ThreadCutting");
+  tappingString.push("pitch=" + xyzFormat.format(tool.threadPitch));
+  tappingString.push("depth=" + depth);
+  tappingString.push("strokeRapidZ=" + xyzFormat.format(cycle.clearance - cycle.retract));
+  tappingString.push("strokeCuttingZ=" + xyzFormat.format(cycle.retract - cycle.stock));
+  tappingString.push("threadRpm=" + rpmFormat.format(spindleSpeed));
+  if (cycleType == "tapping-with-chip-breaking" || cycleType == "left-tapping-with-chip-breaking" || cycleType == "right-tapping-with-chip-breaking") {
+    tappingString.push("breakChipInfeed=" + xyzFormat.format(cycle.incrementalDepth));
+  }
+  if (tool.type == TOOL_TAP_LEFT_HAND) {
+    tappingString.push("direction=ThreadMillingDirection.LeftHandThread");
+  } else {
+    tappingString.push("direction=ThreadMillingDirection.RightHandThread");
+  }
+  writeBlock(tappingString.join(" "));
+}
 
 function formatCycleTime(cycleTime) {
   // cycleTime = cycleTime + 0.5; // round up
