@@ -944,8 +944,11 @@ function onSection() {
 		writeBlock("LoadWcs name=\"" + workOffset +"\"");
 	}
 	
-  if (properties.useSmoothing && !currentSection.isMultiAxis()) {
+  if (properties.useSmoothing && !currentSection.isMultiAxis() && !isProbeOperation(currentSection)) {
     writeBlock("Smoothing On allowedDeviation=" + xyzFormat.format(operationTolerance * 1.2));
+  } else
+  {
+    writeBlock("Smoothing Off");
   }
 
   if (properties.useDynamic) {
@@ -1563,9 +1566,9 @@ function onCyclePoint(x, y, z) {
     measureString += " searchDistance=" + cycle.probeClearance;
     measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " Outside";
-    measureString += " XAligned";
+    measureString += " YAligned";
     measureString += " skipZMeasure";
-    measureString += " originYShift=" + xyzFormat.format(-y);
+    measureString += " originXShift=" + xyzFormat.format(-x);
     writeBlock(measureString);
     break;
   case "probing-y-wall":
@@ -1574,9 +1577,9 @@ function onCyclePoint(x, y, z) {
     measureString += " searchDistance=" + cycle.probeClearance;
     measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " Outside";
-    measureString += " YAligned";
+    measureString += " XAligned";
     measureString += " skipZMeasure";
-    measureString += " originXShift=" + xyzFormat.format(-x);
+    measureString += " originYShift=" + xyzFormat.format(-y);
     writeBlock(measureString);
     break;
   case "probing-x-channel":
@@ -1585,12 +1588,35 @@ function onCyclePoint(x, y, z) {
     measureString += " searchDistance=" + cycle.probeClearance;
     measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
     measureString += " Inside";
-    measureString += " XAligned";
+    measureString += " YAligned";
     measureString += " skipZMeasure";
-     measureString += " originYShift=" + xyzFormat.format(-y);
+     measureString += " originXShift=" + xyzFormat.format(-x);
     writeBlock(measureString);
     break;
   case "probing-x-channel-with-island":
+    var measureString = "SymmetryAxisMeasure";
+    measureString += " width=" + cycle.width1;
+    measureString += " searchDistance=" + cycle.probeClearance;
+    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " Inside";
+    measureString += " YAligned";
+    measureString += " forceSafeHeight";
+    measureString += " skipZMeasure";
+    measureString += " originXShift=" + xyzFormat.format(-x);
+    writeBlock(measureString);
+    break;
+  case "probing-y-channel":
+    var measureString = "SymmetryAxisMeasure";
+    measureString += " width=" + cycle.width1;
+    measureString += " searchDistance=" + cycle.probeClearance;
+    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " Inside";
+    measureString += " XAligned";
+    measureString += " skipZMeasure";
+    measureString += " originYShift=" + xyzFormat.format(-y);
+    writeBlock(measureString);
+    break;
+  case "probing-y-channel-with-island":
     var measureString = "SymmetryAxisMeasure";
     measureString += " width=" + cycle.width1;
     measureString += " searchDistance=" + cycle.probeClearance;
@@ -1600,29 +1626,6 @@ function onCyclePoint(x, y, z) {
     measureString += " forceSafeHeight";
     measureString += " skipZMeasure";
     measureString += " originYShift=" + xyzFormat.format(-y);
-    writeBlock(measureString);
-    break;
-  case "probing-y-channel":
-    var measureString = "SymmetryAxisMeasure";
-    measureString += " width=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    measureString += " Inside";
-    measureString += " YAligned";
-    measureString += " skipZMeasure";
-    measureString += " originXShift=" + xyzFormat.format(-x);
-    writeBlock(measureString);
-    break;
-  case "probing-y-channel-with-island":
-    var measureString = "SymmetryAxisMeasure";
-    measureString += " width=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    measureString += " Inside";
-    measureString += " YAligned";
-    measureString += " forceSafeHeight";
-    measureString += " skipZMeasure";
-    measureString += " originXShift=" + xyzFormat.format(-x);
      writeBlock(measureString);
     break;
   case "probing-xy-circular-boss":
