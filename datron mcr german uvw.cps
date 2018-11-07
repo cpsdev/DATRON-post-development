@@ -1395,6 +1395,8 @@ function onSection() {
         b + ", " +
         c + ",0;"
       );
+
+      
     } else {
       if (!retracted) {
         writeBlock(translate("Submacro") + " Retractzmax;");
@@ -2065,11 +2067,12 @@ function onRapid5D(_x, _y, _z, _a, _b, _c) {
   var y = yOutput.format(_y);
   var z = zOutput.format(_z);
   var a = 0;
-  var b = (machineConfiguration.isMachineCoordinate(0) ? bOutput.format(_a) : "v6p");
+  var b = (machineConfiguration.isMachineCoordinate(0) ? cOutput.format(_a) : "v6p");
   var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(_c) : "w6p");
 
   if (currentSection.isOptimizedForMachine() && (useRTCP && (properties._got4thAxis && properties._got5thAxis))) {
     // non TCP
+    //writeComment("Hallo   a,b,c " +a +"  "+b +"  "+c);
     writeBlock(translate("Submacro") + " Transformpath 0, 1, 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ", 0;");
   } else {
     forceXYZ();
@@ -2084,13 +2087,21 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
     error(localize("Radius compensation cannot be activated/deactivated for 5-axis move."));
     return;
   }
-
+ // writeComment("Hallo  am anfang vor format  _a:" +_a +"  _b:"+_b +"  _c:"+_c);
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
   var z = zOutput.format(_z);
+
+
   var a = 0;
-  var b = (machineConfiguration.isMachineCoordinate(0) ? bOutput.format(_a) : "v6p");
+ // var b = (machineConfiguration.isMachineCoordinate(0) ? _a : "v6p");
+ // var c = (machineConfiguration.isMachineCoordinate(2) ? _c : "w6p");
+
+  var b = (machineConfiguration.isMachineCoordinate(0) ? cOutput.format(_a) : "v6p");
   var c = (machineConfiguration.isMachineCoordinate(2) ? cOutput.format(_c) : "w6p");
+  //writeComment("Hallo  b:" + b +" c:"+c);
+  //writeComment("Hallo  am nach format   b(_a):"+ b +"  c:"+ c);
+  
 
   // get feed rate number
   if (useInverseTimeFeed) {
@@ -2113,6 +2124,9 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
       } else {
         writeBlock(getFeed(feed));
       }
+//TODO
+   //   writeComment("Hallo   a,b,c " +a +"  "+b +"  "+c);
+
       writeBlock(translate("Submacro") + " Transformpath 0, 0, 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ", " + (useInverseTimeFeed ? f.frn : 0) + ";");
     } else {
       if (useInverseTimeFeed) {
