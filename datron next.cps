@@ -47,7 +47,8 @@ properties = {
   useParametricFeed : true, // specifies that feed should be output using parameters
   waitAfterOperation : false, // optional stop
   got4thAxis: true, // specifies if the machine has a rotational 4th axis
-  got5thAxis: true
+  got5thAxis: true, // aktivate the RTCP options
+  useSuction: false, // aktivate suction support
 };
 
 // user-defined property definitions
@@ -1211,7 +1212,14 @@ function onSection() {
   // move to initial Position (this command move the Z Axis to safe high and repositioning in safe high after that drive Z to end position)
   var initialPosition = getFramePosition(currentSection.getInitialPosition());
   var xyz = xOutput.format(initialPosition.x) + yOutput.format(initialPosition.y) + zOutput.format(initialPosition.z);
+
   writeBlock("PrePositioning" + xyz);
+
+  // adds support for suction
+  if(properties.useSuction){
+    writeBlock("Suction On");
+  }
+  
 }
 
 
@@ -1973,6 +1981,12 @@ function onSectionEnd() {
   if (currentSection.isMultiAxis && (properties.got4thAxis || properties.got5thAxis)){
     writeBlock("Rtcp Off");
   }
+
+  // adds support for suction
+  if(properties.useSuction){
+    writeBlock("Suction Off");
+  }
+
   if (properties.useSequences && !isProbeOperation(currentSection)) {
     if (!properties.useExternalSequencesFiles) {
       sequenceFile.append(getRedirectionBuffer());
@@ -1980,6 +1994,7 @@ function onSectionEnd() {
     closeRedirection();
     spacingDepth += 1;
   }
+
 
   writeBlock("EndBlock");
 
