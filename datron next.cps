@@ -46,7 +46,8 @@ properties = {
   writeCoolantCommands : true, // disable the coolant commands in the file
   useParametricFeed : true, // specifies that feed should be output using parameters
   waitAfterOperation : false, // optional stop
-  got4thAxis: false // specifies if the machine has a rotational 4th axis
+  got4thAxis: true, // specifies if the machine has a rotational 4th axis
+  got5thAxis: true
 };
 
 // user-defined property definitions
@@ -62,7 +63,8 @@ propertyDefinitions = {
   writeCoolantCommands: {title:"Write coolant commands", description:"Enable/disable coolant code outputs for the entire program.", type:"boolean"},
   useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
   waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop is outputted to pause after each operation.", type:"boolean"},
-  got4thAxis: {title:"Has 4th axis", description:"Enable if the machine is equipped with a 4-axis.", type:"boolean"}
+  got4thAxis: {title:"Has 4th axis", description:"Enable if the machine is equipped with a 4-axis.", type:"boolean"},
+  got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"}
 };
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
@@ -189,12 +191,24 @@ function formatVariable(text) {
 
 function onOpen() {
   // note: setup your machine here
-  if (properties.got4thAxis) {
+  if (properties.got4thAxis && !properties.got5thAxis) {
     var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[0, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis);
     machineConfiguration.setVendor("DATRON");
     machineConfiguration.setModel("NEO with A Axis");
     machineConfiguration.setDescription("DATRON NEXT Control with additional A-Axis");
+    setMachineConfiguration(machineConfiguration);
+    optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
+  }
+
+   // note: setup your machine here
+   if (properties.got4thAxis && properties.got5thAxis) {
+    var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[-10, 110], cyclic:false, preference:0});
+    var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, 1], range:[-360, 360], cyclic:true, preference:0});
+    machineConfiguration = new MachineConfiguration(aAxis,cAxis);
+    machineConfiguration.setVendor("DATRON");
+    machineConfiguration.setModel("NEXT with DST");
+    machineConfiguration.setDescription("DATRON NEXT Control with additional DST");
     setMachineConfiguration(machineConfiguration);
     optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
   }
@@ -485,6 +499,9 @@ function writeProgramHeader() {
 
   // dont ask why the control need it
   writeBlock("using Base");
+  if (properties.got5thAxis){
+    writeBlock("using Rtcp");
+  }
   if (properties.waitAfterOperation) {
     writeBlock("import System");
   }
@@ -979,12 +996,14 @@ function onSection() {
       forceWorkPlane();
       cancelTransformation();
       var abc = currentSection.getInitialToolAxisABC();
+      writeBlock("Rtcp On");
       writeBlock("MoveToSafetyPosition");
-      writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
+      writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));      
     } else {
 			forceWorkPlane();
       var abc = getWorkPlaneMachineABC(currentSection.workPlane);
-      setWorkPlane(abc);
+      setWorkPlane(abc);      
+      writeBlock("Rtcp On");
     }
   } else {
     // pure 3D
@@ -1951,7 +1970,9 @@ function dump(name, _arguments) {
 
 function onSectionEnd() {
   writeBlock("ToolCompensation Off");
-
+  if (currentSection.isMultiAxis && (properties.got4thAxis || properties.got5thAxis)){
+    writeBlock("Rtcp Off");
+  }
   if (properties.useSequences && !isProbeOperation(currentSection)) {
     if (!properties.useExternalSequencesFiles) {
       sequenceFile.append(getRedirectionBuffer());
