@@ -908,14 +908,6 @@ function getWorkPlaneMachineABC(workPlane) {
 }
 
 function onSection() {
-	/*
-  if (isProbeOperation(currentSection)) {
-    // TAG: remove once probing is supported properly, waiting for Datron
-    error(localize("Probing is not supported for now."));
-    return;
-  }
-	*/
-
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
   var tool = currentSection.getTool();
@@ -1046,10 +1038,6 @@ function onSection() {
   writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
 
   if (!isProbeOperation(currentSection)) {
-    // set rpm
-    if ((tool.spindleRPM < 6000) && (tool.spindleRPM > 0)) {
-      tool.spindleRPM = 6000;
-    }
 
     // set coolant after we have positioned at Z
     setCoolant(tool.coolant);
