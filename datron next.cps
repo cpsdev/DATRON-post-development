@@ -989,14 +989,20 @@ function onSection() {
       forceWorkPlane();
       cancelTransformation();
       var abc = currentSection.getInitialToolAxisABC();
-      writeBlock("Rtcp On");
+      if(properties.got5thAxis){
+        writeBlock("Rtcp On");
+      }
+     
       writeBlock("MoveToSafetyPosition");
       writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));      
     } else {
 			forceWorkPlane();
       var abc = getWorkPlaneMachineABC(currentSection.workPlane);
       setWorkPlane(abc);      
-      writeBlock("Rtcp On");
+      if(properties.got5thAxis){
+        writeBlock("Rtcp On");
+      }
+     
     }
   } else {
     // pure 3D
@@ -1966,7 +1972,7 @@ function dump(name, _arguments) {
 
 function onSectionEnd() {
   writeBlock("ToolCompensation Off");
-  if (currentSection.isMultiAxis && (properties.got4thAxis || properties.got5thAxis)){
+  if (currentSection.isMultiAxis && (properties.got4thAxis && properties.got5thAxis)){
     writeBlock("Rtcp Off");
   }
 
