@@ -100,7 +100,8 @@ var useDatronFeedCommand = false; // unsupported for now, keep false
 var language = "de"; // specifies the language, replace with getLangId()
 var spacingDepth = 0;
 var spacingString = "  ";
-var sequenceFile = new StringBuffer();
+var sequenceBuffer = new StringBuffer();
+var mainProgramBuffer = new StringBuffer();
 var spacing = "##########################################################";
 
 // collected state
@@ -848,8 +849,11 @@ function setWorkPlane(abc) {
 
   forceWorkPlane(); // always need the new workPlane
 	forceABC();
-
-  writeBlock("MoveToSafetyPosition");
+  if(properties.got5thAxis){
+    writeBlock("MoveZToTopPosition");
+  }else{
+    writeBlock("MoveToSafetyPosition");
+  }
   writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
 
   currentWorkPlaneABC = abc;
@@ -992,18 +996,17 @@ function onSection() {
       var abc = currentSection.getInitialToolAxisABC();
       if(properties.got5thAxis){
         writeBlock("Rtcp On");
-      }
-     
-      writeBlock("MoveToSafetyPosition");
+      }  
+      writeBlock("MoveToSafetyPosition");    
       writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));      
     } else {
 			forceWorkPlane();
       var abc = getWorkPlaneMachineABC(currentSection.workPlane);
+      
       setWorkPlane(abc);      
       if(properties.got5thAxis){
         writeBlock("Rtcp On");
       }
-     
     }
   } else {
     // pure 3D
@@ -1482,6 +1485,11 @@ function onCommand(command) {
     return;
   case COMMAND_TOOL_MEASURE:
     return;
+  case COMMAND_OPTIONAL_STOP:
+     writeComment("Optional Stop");
+
+    return;
+   
   }
 
   var stringId = getCommandStringId(command);
@@ -2015,7 +2023,7 @@ function onSectionEnd() {
 
   if (properties.useSequences && !isProbeOperation(currentSection)) {
     if (!properties.useExternalSequencesFiles) {
-      sequenceFile.append(getRedirectionBuffer());
+      sequenceBuffer.append(getRedirectionBuffer());
     }
     closeRedirection();
     spacingDepth += 1;
@@ -2042,6 +2050,6 @@ function onClose() {
 
   if (properties.useSequences && !properties.useExternalSequencesFiles) {
     writeComment(spacing);
-    writeBlock(sequenceFile.toString());
+    writeBlock(sequenceBuffer.toString());
   }
 }
