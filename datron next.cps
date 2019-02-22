@@ -46,12 +46,14 @@ properties = {
   writeCoolantCommands : true, // disable the coolant commands in the file
   useParametricFeed : true, // specifies that feed should be output using parameters
   waitAfterOperation : false, // optional stop
-  got4thAxis: true, // specifies if the machine has a rotational 4th axis
-  got5thAxis: true, // aktivate the RTCP options
+  got4thAxis: false, // specifies if the machine has a rotational 4th axis
+  //got5thAxis: false, // aktivate the RTCP options
   useSuction: false, // aktivate suction support
   createThreadChamfer: false, // create a chamfer with the thread milling tool
   preloadTool: false, //prepare a Tool for the DATROn tool assist
 };
+
+  got5thAxis = false;
 
 // user-defined property definitions
 propertyDefinitions = {
@@ -1472,11 +1474,22 @@ function setCoolant(coolant) {
     switch (coolant) {
     case COOLANT_FLOOD:
     case COOLANT_MIST:
+      writeBlock("SprayTechnology Internal");
       writeBlock("Coolant Alcohol");
       break;
     case COOLANT_AIR:
+      writeBlock("SprayTechnology Internal");
       writeBlock("Coolant Air");
       break;
+    case COOLANT_THROUGH_TOOL:
+      writeBlock("SprayTechnology External");
+      writeBlock("Coolant Alcohol");
+      break;      
+     case COOLANT_AIR_THROUGH_TOOL:
+      writeBlock("SprayTechnology External");
+      writeBlock("Coolant Air");
+      break;    
+      
     default:
       onUnsupportedCoolant(coolant);
     }
@@ -1591,6 +1604,7 @@ function onCyclePoint(x, y, z) {
     onRapid(x, y, cycle.clearance);
     break;
 */
+
   case "tapping":
   case "left-tapping":
   case "right-tapping":
