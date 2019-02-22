@@ -70,7 +70,7 @@ propertyDefinitions = {
   got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
   createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
-  preloadTool:{title:"Preload the next Tool", description:"Preload the next needet Tool in the DATROn Tool assit."}
+  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."}
 };
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
@@ -95,9 +95,9 @@ var aOutput = createVariable({prefix:" A="}, abcFormat);
 var bOutput = createVariable({prefix:" B="}, abcFormat);
 var cOutput = createVariable({prefix:" C="}, abcFormat);
 
-var iOutput = createVariable({prefix:" dX=", force : true}, feedFormat);
-var jOutput = createVariable({prefix:" dY=", force : true}, feedFormat);
-var kOutput = createVariable({prefix:" dZ="}, feedFormat);
+var iOutput = createVariable({prefix:" dX=", force : true}, xyzFormat);
+var jOutput = createVariable({prefix:" dY=", force : true}, xyzFormat);
+var kOutput = createVariable({prefix:" dZ="}, xyzFormat);
 
 // fixed settings
 var useDatronFeedCommand = false; // unsupported for now, keep false
