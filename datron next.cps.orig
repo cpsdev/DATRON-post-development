@@ -49,7 +49,6 @@ properties = {
   got4thAxis: true, // specifies if the machine has a rotational 4th axis
   got5thAxis: true, // aktivate the RTCP options
   useSuction: false, // aktivate suction support
-  createThreadChamfer: false, // create a chamfer with the thread milling tool
 };
 
 // user-defined property definitions
@@ -66,9 +65,7 @@ propertyDefinitions = {
   useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
   waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop is outputted to pause after each operation.", type:"boolean"},
   got4thAxis: {title:"Has 4th axis", description:"Enable if the machine is equipped with a 4-axis.", type:"boolean"},
-  got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"},
-  useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
-  createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
+  got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"}
 };
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
@@ -102,8 +99,7 @@ var useDatronFeedCommand = false; // unsupported for now, keep false
 var language = "de"; // specifies the language, replace with getLangId()
 var spacingDepth = 0;
 var spacingString = "  ";
-var sequenceBuffer = new StringBuffer();
-var mainProgramBuffer = new StringBuffer();
+var sequenceFile = new StringBuffer();
 var spacing = "##########################################################";
 
 // collected state
@@ -851,11 +847,8 @@ function setWorkPlane(abc) {
 
   forceWorkPlane(); // always need the new workPlane
 	forceABC();
-  if(properties.got5thAxis){
-    writeBlock("MoveZToTopPosition");
-  }else{
-    writeBlock("MoveToSafetyPosition");
-  }
+
+  writeBlock("MoveToSafetyPosition");
   writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
 
   currentWorkPlaneABC = abc;
@@ -998,17 +991,18 @@ function onSection() {
       var abc = currentSection.getInitialToolAxisABC();
       if(properties.got5thAxis){
         writeBlock("Rtcp On");
-      }  
-      writeBlock("MoveToSafetyPosition");    
+      }
+     
+      writeBlock("MoveToSafetyPosition");
       writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));      
     } else {
 			forceWorkPlane();
       var abc = getWorkPlaneMachineABC(currentSection.workPlane);
-      
       setWorkPlane(abc);      
       if(properties.got5thAxis){
         writeBlock("Rtcp On");
       }
+     
     }
   } else {
     // pure 3D
@@ -1050,6 +1044,15 @@ function onSection() {
   writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
 
   if (!isProbeOperation(currentSection)) {
+<<<<<<< HEAD
+=======
+    // set rpm
+    /*
+    if ((spindleSpeed < 6000) && (spindleSpeed > 0)) {
+      spindleSpeed = 6000;
+    }
+    */
+>>>>>>> b96761ab7bb85d33b42496678b6eac58498e9d70
 
     // set coolant after we have positioned at Z
     setCoolant(tool.coolant);
@@ -1487,11 +1490,6 @@ function onCommand(command) {
     return;
   case COMMAND_TOOL_MEASURE:
     return;
-  case COMMAND_OPTIONAL_STOP:
-     writeComment("Optional Stop");
-
-    return;
-   
   }
 
   var stringId = getCommandStringId(command);
@@ -1951,10 +1949,7 @@ function threadMilling(cycle) {
   threadString.push("strokeRapidZ=" + xyzFormat.format(cycle.clearance - cycle.retract));
   threadString.push("strokeCuttingZ=" + xyzFormat.format(cycle.retract - cycle.stock));
   // threadString.push("threadStandard=threadStandard");
-  if(properties.createThreadChamfer){
-    threadString.push("Deburring");
-  }
-  // ;
+  // threadString.push("deburring=ThreadMillingDeburring.NoDeburring");
   // threadString.push("insideOutside=ThreadMillingSide.Inside");
   threadString.push("finishing=finishing");
 	if (cycle.threading == "left") {
@@ -2028,7 +2023,7 @@ function onSectionEnd() {
 
   if (properties.useSequences && !isProbeOperation(currentSection)) {
     if (!properties.useExternalSequencesFiles) {
-      sequenceBuffer.append(getRedirectionBuffer());
+      sequenceFile.append(getRedirectionBuffer());
     }
     closeRedirection();
     spacingDepth += 1;
@@ -2055,6 +2050,6 @@ function onClose() {
 
   if (properties.useSequences && !properties.useExternalSequencesFiles) {
     writeComment(spacing);
-    writeBlock(sequenceBuffer.toString());
+    writeBlock(sequenceFile.toString());
   }
 }
