@@ -50,6 +50,7 @@ properties = {
   got5thAxis: true, // aktivate the RTCP options
   useSuction: false, // aktivate suction support
   createThreadChamfer: false, // create a chamfer with the thread milling tool
+  preloadTool: false, //prepare a Tool for the DATROn tool assist
 };
 
 // user-defined property definitions
@@ -69,6 +70,7 @@ propertyDefinitions = {
   got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
   createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
+  preloadTool:{title:"Preload the next Tool", description:"Preload the next needet Tool in the DATROn Tool assit."}
 };
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
@@ -285,6 +287,21 @@ function createToolVariables() {
     }
     writeBlock(" ");
   }
+}
+
+function getNextTool(number) {
+  var currentSectionId = getCurrentSectionId();
+  if (currentSectionId < 0) {
+    return null;
+  }
+  for (var i = currentSectionId + 1; i < getNumberOfSections(); ++i) {
+    var section = getSection(i);
+    var sectionTool = section.getTool();
+    if (number != sectionTool.number) {
+      return sectionTool; // found next tool
+    }
+  }
+  return null; // not found
 }
 
 function createToolDescriptionTable() {
@@ -1065,6 +1082,18 @@ function onSection() {
         " newRpm=" + rpmFormat.format(spindleSpeed) +
         " skipRestoring"
       );
+    }
+
+    //preload the next tool for the Datron tool assist
+    if(properties.preloadTool){
+      var nextTool = getNextTool(tool.number);
+      if(nextTool){
+        if (properties.writeToolTable) {
+          writeBlock("ProvideTool name=" + "\"" + createToolName(nextTool) +  "\"");
+        } else {
+          writeBlock("ProvideTool = " + toolOutput.format(nextTool.number));
+        }
+      }          
     }
 
     // set the current feed
