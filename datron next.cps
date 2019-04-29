@@ -51,6 +51,7 @@ properties = {
   useSuction: false, // aktivate suction support
   createThreadChamfer: false, // create a chamfer with the thread milling tool
   preloadTool: false, //prepare a Tool for the DATROn tool assist
+  writePathOffset:true, //write the definition for the PathOffset variable for every Operation
 };
 
   got5thAxis = false;
@@ -69,11 +70,12 @@ propertyDefinitions = {
   useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
   waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop is outputted to pause after each operation.", type:"boolean"},
   got4thAxis: {title:"Has 4th axis", description:"Enable if the machine is equipped with a 4-axis.", type:"boolean"},
-  got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"},
+  //got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
   createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
-  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."}
-};
+  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."},
+  writePathOffset:{title:"Write Path Offset", description:"Write the PathOffset declaration."}
+}
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
 var mFormat = createFormat({prefix:"M", width:2, zeropad:true, decimals:1});
@@ -1068,6 +1070,28 @@ function onSection() {
   var clearance = getFramePosition(currentSection.getInitialPosition()).z;
   writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
 
+  // radius Compnesation
+  var compneastionType = getParameter('operation:compensationType');
+  var wearCompensation = getParameter('operation:compensationDeltaRadius');
+
+
+  dimensionFormat
+  if(properties.writePathOffset){
+    switch( compneastionType){
+      case 'computer':      
+        break;
+      case 'control':      
+        writeBlock("PathOffset = 0")      
+        break;
+      case 'wear':     
+        writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
+        break;
+      case 'inverseWear':   
+        writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation * -1));
+        break;    
+    }
+  }
+
   if (!isProbeOperation(currentSection)) {
 
     // set coolant after we have positioned at Z
@@ -1341,12 +1365,15 @@ function onLinear(x, y, z, feed) {
     switch (radiusCompensation) {
     case RADIUS_COMPENSATION_LEFT:
       writeBlock("ToolCompensation Left");
+      writeBlock("PathCorrection Left");      
       break;
     case RADIUS_COMPENSATION_RIGHT:
       writeBlock("ToolCompensation Right");
+      writeBlock("PathCorrection Right");      
       break;
     case RADIUS_COMPENSATION_OFF:
       writeBlock("ToolCompensation Off");
+      writeBlock("PathCorrection Off");      
       break;
     }
   }
@@ -2060,6 +2087,7 @@ function dump(name, _arguments) {
 
 function onSectionEnd() {
   writeBlock("ToolCompensation Off");
+  writeBlock("PathCorrection Off");
   if (currentSection.isMultiAxis && (properties.got4thAxis && properties.got5thAxis)){
     writeBlock("Rtcp Off");
   }
