@@ -47,15 +47,15 @@ properties = {
   useParametricFeed : true, // specifies that feed should be output using parameters
   waitAfterOperation : false, // optional stop
   got4thAxis: false, // specifies if the machine has a rotational 4th axis
-  //got5thAxis: false, // aktivate the RTCP options
+  got5thAxis: false, // aktivate the RTCP options
   useSuction: false, // aktivate suction support
   createThreadChamfer: false, // create a chamfer with the thread milling tool
   preloadTool: false, //prepare a Tool for the DATROn tool assist
   writePathOffset:true, //write the definition for the PathOffset variable for every Operation
+  useRtcp:false,
 };
 
-  got5thAxis = false;
-
+ 
 // user-defined property definitions
 propertyDefinitions = {
   writeMachine: {title:"Write machine", description:"Output the machine settings in the header of the code.", group:0, type:"boolean"},
@@ -70,7 +70,7 @@ propertyDefinitions = {
   useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
   waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop is outputted to pause after each operation.", type:"boolean"},
   got4thAxis: {title:"Has 4th axis", description:"Enable if the machine is equipped with a 4-axis.", type:"boolean"},
-  //got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"},
+  got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
   createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
   preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."},
@@ -525,7 +525,7 @@ function writeProgramHeader() {
 
   // dont ask why the control need it
   writeBlock("using Base");
-  if (properties.got5thAxis){
+  if ((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
     writeBlock("using Rtcp");
   }
   if (properties.waitAfterOperation) {
@@ -872,7 +872,7 @@ function setWorkPlane(abc) {
 
   forceWorkPlane(); // always need the new workPlane
 	forceABC();
-  if(properties.got5thAxis){
+  if((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
     writeBlock("MoveZToTopPosition");
   }else{
     writeBlock("MoveToSafetyPosition");
@@ -1017,7 +1017,7 @@ function onSection() {
       forceWorkPlane();
       cancelTransformation();
       var abc = currentSection.getInitialToolAxisABC();
-      if(properties.got5thAxis){
+      if((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
         writeBlock("Rtcp On");
       }  
       writeBlock("MoveToSafetyPosition");    
@@ -1027,7 +1027,7 @@ function onSection() {
       var abc = getWorkPlaneMachineABC(currentSection.workPlane);
       
       setWorkPlane(abc);      
-      if(properties.got5thAxis){
+      if((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
         writeBlock("Rtcp On");
       }
     }
@@ -1070,20 +1070,30 @@ function onSection() {
   var clearance = getFramePosition(currentSection.getInitialPosition()).z;
   writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
 
-  // radius Compnesation
-  var compneastionType = getParameter('operation:compensationType');
-  var wearCompensation = getParameter('operation:compensationDeltaRadius');
+  // radius Compensation
+  var compensationType
+  if(hasParameter('operation:compensationType')){
+    compensationType = getParameter('operation:compensationType'); 
+  } else {
+    compensationType = 'computer';
+  }
 
+  var wearCompensation
+  if(hasParameter('operation:compensationDeltaRadius')){
+     wearCompensation = getParameter('operation:compensationDeltaRadius');
+  } else {
+    wearCompensation = 0;
+  }  
 
-  dimensionFormat
   if(properties.writePathOffset){
-    switch( compneastionType){
+    switch( compensationType){
       case 'computer':      
         break;
       case 'control':      
         writeBlock("PathOffset = 0")      
         break;
-      case 'wear':     
+      case 'wear': 
+
         writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
         break;
       case 'inverseWear':   
@@ -1497,23 +1507,22 @@ function setCoolant(coolant) {
       return;
     }
 
-    var m;
     switch (coolant) {
     case COOLANT_FLOOD:
     case COOLANT_MIST:
-      writeBlock("SprayTechnology Internal");
+      writeBlock("SprayTechnology External");
       writeBlock("Coolant Alcohol");
       break;
     case COOLANT_AIR:
-      writeBlock("SprayTechnology Internal");
+      writeBlock("SprayTechnology External");
       writeBlock("Coolant Air");
       break;
     case COOLANT_THROUGH_TOOL:
-      writeBlock("SprayTechnology External");
+      writeBlock("SprayTechnology Internal");
       writeBlock("Coolant Alcohol");
       break;      
      case COOLANT_AIR_THROUGH_TOOL:
-      writeBlock("SprayTechnology External");
+      writeBlock("SprayTechnology Internal");
       writeBlock("Coolant Air");
       break;    
       
@@ -2088,7 +2097,7 @@ function dump(name, _arguments) {
 function onSectionEnd() {
   writeBlock("ToolCompensation Off");
   writeBlock("PathCorrection Off");
-  if (currentSection.isMultiAxis && (properties.got4thAxis && properties.got5thAxis)){
+  if (currentSection.isMultiAxis && (properties.got4thAxis || properties.got5thAxis) && properties.useRtcp){
     writeBlock("Rtcp Off");
   }
 
