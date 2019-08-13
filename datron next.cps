@@ -33,12 +33,20 @@ maximumCircularSweep = toRad(120);
 allowHelicalMoves = true;
 allowedCircularPlanes = (1 << PLANE_XY); // allow XY plane only
 
+const MachineType = {
+  NEO: 'NEO',
+  CUBE: 'Cube',
+  MX: 'MX'
+}
+
+
 // user-defined properties
 properties = {
   writeMachine : true, // write machine
   showNotes : false, // specifies that operation notes should be output
   useSmoothing : true, // specifies if smoothing should be used or not
   useDynamic : true, // specifies using dynamic mode or not
+  machineType : MachineType.MX, // specifiees the DATRON machine type
   useParkPosition : true, // specifies to use park position at the end of the program
   writeToolTable : true, // write the table with the geometric tool informations
   useSequences : true, // this use a sequence in the output format to perform on large files
@@ -62,6 +70,7 @@ propertyDefinitions = {
   showNotes: {title:"Show notes", description:"Writes operation notes as comments in the outputted code.", type:"boolean"},
   useSmoothing: {title:"Use smoothing", description:"Specifies if smoothing should be used or not.", type:"boolean"},
   useDynamic: {title:"Dynamic mode", description:"Specifies the using of dynamic mode or not.", type:"boolean"},
+  machineType:{title:"Machine type", description:"Specifies the DATRON machine type.", type:"MachineType"},
   useParkPosition: {title: "Park at end of program", description:"Enable to use the park position at end of program.", type:"boolean"},
   writeToolTable: {title:"Write tool table", description:"Write a tool table containing geometric tool information.", group:0, type:"boolean"},
   useSequences: {title:"Use sequences", description:"If enables, sequences are used in the output format on large files.", type:"boolean"},
@@ -990,22 +999,29 @@ function onSection() {
   }
 
   if (properties.useDynamic) {
-
     var dynamic = 5;
-		/*
-    if (operationTolerance <= 0.02) {
-      dynamic = 4;
+     // set machine type specific dynamic sets
+    switch(properties.machineType){     
+      case 'NEO':
+        dynamic =5;
+        break;
+      case 'MX':
+      case 'CUBE':     
+        if (operationTolerance <= 0.02) {
+          dynamic = 4;
+        }
+        if (operationTolerance <= 0.01) {
+          dynamic = 3;
+        }
+        if (operationTolerance <= 0.005) {
+          dynamic = 2;
+        }
+        if (operationTolerance <= 0.003) {
+          dynamic = 1;
+        }
+        break;
     }
-    if (operationTolerance <= 0.01) {
-      dynamic = 3;
-    }
-    if (operationTolerance <= 0.005) {
-      dynamic = 2;
-    }
-    if (operationTolerance <= 0.003) {
-      dynamic = 1;
-    }
-		*/
+   	
     writeBlock("Dynamic = " + dynamic);
   }
   if (properties.waitAfterOperation) {
