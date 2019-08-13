@@ -1007,16 +1007,16 @@ function onSection() {
         break;
       case 'MX':
       case 'CUBE':     
-        if (operationTolerance <= 0.02) {
+        if (operationTolerance <= (unit == MM ? 0.02 : (0.02/25.4))) {
           dynamic = 4;
         }
-        if (operationTolerance <= 0.01) {
+        if (operationTolerance <= (unit == MM ? 0.04 : (0.04/25.4))) {
           dynamic = 3;
         }
-        if (operationTolerance <= 0.005) {
+        if (operationTolerance <= (unit == MM ? 0.005 : (0.005/25.4))) {
           dynamic = 2;
         }
-        if (operationTolerance <= 0.003) {
+        if (operationTolerance <= (unit == MM ? 0.003 : (0.003/25.4))) {
           dynamic = 1;
         }
         break;
