@@ -55,8 +55,8 @@ properties = {
   useParametricFeed : true, // specifies that feed should be output using parameters
   waitAfterOperation : false, // optional stop
   got4thAxis: false, // specifies if the machine has a rotational 4th axis
-  got5thAxis: false, // aktivate the RTCP options
-  useSuction: false, // aktivate suction support
+  got5thAxis: false, // activate the RTCP options
+  useSuction: false, // activate suction support
   createThreadChamfer: false, // create a chamfer with the thread milling tool
   preloadTool: false, //prepare a Tool for the DATROn tool assist
   writePathOffset:true, //write the definition for the PathOffset variable for every Operation
