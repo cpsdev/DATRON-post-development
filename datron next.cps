@@ -1582,7 +1582,6 @@ function setCoolant(coolant) {
 
 
 function onManualNC(command, value) { 
-  writeln("On Manual NC command: " + command + ", value: " + value) ; 
   switch (command) {
     case 42: // Manual NC enumeration code ???
       var tokens = value.trim().split(" "); 
@@ -1659,8 +1658,7 @@ function onManualNC(command, value) {
       break;
     case 45: //call subprogram
       break;
-    }
-    writeln(value);
+    } 
     var operation = {operationCall: value, operationProgram:""}
     SimPLProgram.operationList.push(operation);
 }
