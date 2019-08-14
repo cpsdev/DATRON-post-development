@@ -1542,32 +1542,6 @@ function onRewindMachine(a, b, c) {
   writeBlock("Line" + abc);
 }
 
-
-function onManualNC(command, value) {   
-    
-    var tokens = value.trim().split(" "); 
-    if(tokens[0] == "using"){
-      SimPLProgram.usingList.push(value);
-    } else{
-      var operation = {operationCall: value,operationProgram:""}
-      SimPLProgram.operationList.push(operation);
-    }
-    
-    // writeBlock(value);
-  // manualNC.push({
-  //   command: command,
-  //   value: value,
-  //   sectionId: (typeof currentSection !== "undefined") ? currentSection.getId() : -1
-  // });
-  // switch (command) {
-  //   case COMMAND_STOP:
-  //     writeComment("Hard stop");
-  //     break;
-  //   default:
-  //     onUnsupportedManualNC(command, value);
-  // }
-}
-
 var currentCoolantMode = COOLANT_OFF;
 
 function setCoolant(coolant) {
@@ -1605,45 +1579,100 @@ function setCoolant(coolant) {
   }
 }
 
+
+
+function onManualNC(command, value) { 
+  writeln("On Manual NC command: " + command + ", value: " + value) ; 
+  switch (command) {
+    case 42: // Manual NC enumeration code ???
+      var tokens = value.trim().split(" "); 
+      if(tokens[0] == "using"){
+        SimPLProgram.usingList.push(value);
+        return;
+      } else{
+        break
+      }      
+    case 40:  // Comment
+      value = "# " + value;
+      break;  
+    case 41: //wait
+      value = "Sleep seconds=" + value;
+      break;
+    case COMMAND_COOLANT_OFF:
+      value = "SpraySystem Off";      
+      break;
+    case COMMAND_COOLANT_ON:
+      value = "SpraySystem On";      
+      break;      
+    case COMMAND_STOP:
+      value = "break";      
+      break;  
+    case COMMAND_START_SPINDLE:
+        value = "Spindle On";      
+        break;  
+    case COMMAND_LOCK_MULTI_AXIS:
+      return;
+    case COMMAND_UNLOCK_MULTI_AXIS:
+      return;
+    case COMMAND_START_CHIP_TRANSPORT:
+      value = "ChipConveyor On";
+      break;
+    case COMMAND_STOP_CHIP_TRANSPORT:
+      value = "ChipConveyor Off";
+      break;
+    case COMMAND_OPEN_DOOR: //open door
+      value = "ReleaseDoor";
+      break;
+    case COMMAND_CLOSE_DOOR: //close door not needed
+      return;
+    case COMMAND_CALIBRATE: //calibrate
+      value = "# calibration currently not supported!";
+      break;
+    case COMMAND_VERIFY: // check part
+      value = 'Dialog message="Please check workpiece!" Ok Cancel caption="Cam generated dialog"'
+      break;
+    case COMMAND_CLEAN: // clean part
+      value = 'Dialog message="Please clean workpiece!" Ok Cancel caption="Cam generated dialog"'
+      break;
+    case 43: // action no idea for what has a paramter
+      value = "# Action currently not supported!"
+      break;
+    case 44: // print message
+      return;
+    case 46: // show message
+      value = 'StatusMessage message="' + value + '"';
+      break;
+    case COMMAND_ALARM: // alarm
+      value = 'Dialog message="Alarm!" Ok Cancel caption="Cam generated dialog"'
+      break;
+    case COMMAND_ALERT: // alarm
+      value = 'Dialog message="Warning!" Ok Cancel caption="Cam generated dialog"'
+      break;
+    case COMMAND_BREAK_CONTROL:
+      value = "MeasureToolLength"
+      break;
+    case COMMAND_TOOL_MEASURE:
+      value = "MeasureToolLength"
+      break;
+    case COMMAND_OPTIONAL_STOP:
+      value = "OptionalBreak";  
+      break;
+    case 45: //call subprogram
+      break;
+    }
+    writeln(value);
+    var operation = {operationCall: value, operationProgram:""}
+    SimPLProgram.operationList.push(operation);
+}
+
 var mapCommand = {};
 
 var passThrough = new Array();
-function onPassThrough(text) {
+function onPassThrough(text) { 
   passThrough.push(text);
 }
 
 function onCommand(command) {
-  switch (command) {
-  case COMMAND_COOLANT_OFF:
-    setCoolant(COOLANT_OFF);
-    return;
-  case COMMAND_COOLANT_ON:
-    return;
-  case COMMAND_STOP:
-    return;
-  case COMMAND_START_SPINDLE:
-    return;
-  case COMMAND_LOCK_MULTI_AXIS:
-    return;
-  case COMMAND_UNLOCK_MULTI_AXIS:
-    return;
-  case COMMAND_START_CHIP_TRANSPORT:
-    return;
-  case COMMAND_STOP_CHIP_TRANSPORT:
-    return;
-  case COMMAND_BREAK_CONTROL:
-    return;
-  case COMMAND_TOOL_MEASURE:
-    return;
-  case COMMAND_OPTIONAL_STOP:
-     writeComment("Optional Stop");
-
-    return;
-  default:
-    return;
-   
-  }
-
   var stringId = getCommandStringId(command);
   var mcode = mapCommand[stringId];
   if (mcode != undefined) {
