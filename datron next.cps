@@ -117,9 +117,30 @@ var useDatronFeedCommand = false; // unsupported for now, keep false
 var language = "de"; // specifies the language, replace with getLangId()
 var spacingDepth = 0;
 var spacingString = "  ";
-var sequenceBuffer = new StringBuffer();
-var mainProgramBuffer = new StringBuffer();
 var spacing = "##########################################################";
+
+// buffer for building up a program not serial created
+var sequenceBuffer = new StringBuffer();
+
+function NewOperation(operationCall){
+  this.operationCall = operationCall;
+  this.operationProgram = new StringBuffer();
+  this.operationProgram.append("");
+}
+var currentOperation;
+function NewSimPLProgram(){
+  this.moduleName = new StringBuffer();
+  this.measuringSystem = "Metric";
+  this.toolDescriptionList = new Array();
+  this.workpieceGeometry = "";
+  this.sequenceList = new Array();
+  this.usingList = new Array();
+  this.globalVariableList = new Array();
+  this.mainProgram = new StringBuffer();
+  this.operationList = new Array();
+}
+
+var SimPLProgram = new NewSimPLProgram();
 
 // collected state
 var currentFeedValue = -1;
@@ -162,11 +183,29 @@ function getSpacing() {
 }
 
 /**
+  Redirect the output to an infinite number of buffers ;-)
+  works like a stack you can use many redirection levels and go back again  
+*/
+var writeRedirectionStack = new Array();
+
+function SetWriteRedirection(redirectionbuffer){
+  writeRedirectionStack.push(redirectionbuffer);  
+}
+
+function ResetWriteRedirection(){  
+  return writeRedirectionStack.pop(); 
+}
+
+/**
   Writes the specified block.
 */
-function writeBlock() {
-  var text = formatWords(arguments);
-  writeWords(getSpacing() + text);
+function writeBlock(arguments) {
+  var text = getSpacing() + formatWords(arguments); 
+  if (writeRedirectionStack.length == 0){
+    writeWords(text);  
+  } else {
+    writeRedirectionStack[writeRedirectionStack.length-1].append(text + "\r\n");
+  }
 }
 
 /**
@@ -174,7 +213,12 @@ function writeBlock() {
 */
 function writeComment(text) {
   if (text) {
-    writeln(getSpacing() + "# " + text);
+    text = getSpacing() + "# " + text;
+    if (writeRedirectionStack.length == 0){
+      writeln(text);
+    } else {
+      writeRedirectionStack[writeRedirectionStack.length-1].append(text + "\r\n");
+    }
   }
 }
 
@@ -243,33 +287,12 @@ function onOpen() {
     cOutput.disable();
   }
 
-  // header
-  writeProgramHeader();
-
-  // write program calls
-  var numberOfSections = getNumberOfSections();
-  for (var i = 0; i < numberOfSections; ++i) {
-    var section = getSection(i);
-    var opName = getOperationName(section);
-    var sectionID = i + 1;
-    writeBlock(opName);
-  }
-
-  onCommand(COMMAND_COOLANT_OFF);
-
-  writeBlock("Spindle Off");
-
-  setWorkPlane(new Vector(0, 0, 0)); // reset working plane
-  if (properties.useParkPosition) {
-    writeBlock("MoveToParkPosition");
-  } else {
-    writeBlock("MoveToSafetyPosition");
-    zOutput.reset();
-  }
-
+  // header of the main program
+  writeProgramHeader();  
   spacingDepth -= 1;
-  writeBlock("endprogram #" + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
-  writeln("");
+  ResetWriteRedirection();
+
+  // the rest of program main will be set at closing when all the code is analysed
 }
 
 function getOperationDescription(section) {
@@ -293,13 +316,14 @@ function getOperationDescription(section) {
 
 function createToolVariables() {
   var tools = getToolTable();
+  var toolVariables = new Array();
   if (tools.getNumberOfTools() > 0 && !properties.writeToolTable) {
     for (var i = 0; i < tools.getNumberOfTools(); ++i) {
       var tool = tools.getTool(i);
-      writeBlock(toolOutput.format(tool.number) + ":number");
-    }
-    writeBlock(" ");
+      toolVariables.push(toolOutput.format(tool.number) + ":number");
+    }    
   }
+  return toolVariables;
 }
 
 function getNextTool(number) {
@@ -317,10 +341,11 @@ function getNextTool(number) {
   return null; // not found
 }
 
-function createToolDescriptionTable() {
+function createToolDescriptionTable() {  
   if (!properties.writeToolTable) {
     return;
   }
+  
   var toolDescriptionArray = new Array();
   var toolNameList = new Array();
   var numberOfSections = getNumberOfSections();
@@ -344,7 +369,7 @@ function createToolDescriptionTable() {
     }
   }
 
-  writeBlock(toolDescriptionArray.join("\r\n"));
+  return toolDescriptionArray;  
 }
 
 function createToolDescription(tool) {
@@ -478,6 +503,7 @@ function writeProgramHeader() {
   // write creation Date
   var date = timeFormat.format(nowDay) + "." + timeFormat.format(nowMonth) + "." + now.getFullYear();
   var time = timeFormat.format(nowHour) + ":" + timeFormat.format(nowMin);
+  SetWriteRedirection(SimPLProgram.moduleName);
   writeComment("!File ; generated at " + date + " - " + time);
   if (programComment) {
     writeComment(formatComment(programComment));
@@ -506,14 +532,15 @@ function writeProgramHeader() {
   writeBlock(" ");
 
   writeBlock("@ MeasuringSystem = " + (unit == MM ? "\"" + "Metric" + "\"" + " @" : "\"" + "Imperial" + "\"" + " @"));
+  ResetWriteRedirection();
 
-  // write the table of used tools in the header of the program
-  createToolDescriptionTable();
-  writeBlock("");
+  // set the table of used tools in the header of the program
+  SimPLProgram.toolDescriptionList =  createToolDescriptionTable();
 
-  writeWorkpiece();
+  // set the workpiece information
+  SimPLProgram.workpieceGeometry = writeWorkpiece();
 
-  // Creates the sequence header in the program file
+  // set the sequence header in the program file
   if (properties.useSequences) {
     var sequences = new Array();
     var numberOfSections = getNumberOfSections();
@@ -526,24 +553,21 @@ function writeProgramHeader() {
     if (properties.useExternalSequencesFiles) {
       writeBlock("@ EmbeddedSequences = false @");
     }
-    if (sequences.length > 0) {
-      writeBlock("sequence " + sequences.join("\r\nsequence "));
-      writeBlock(" ");
-    }
+
+    SimPLProgram.sequenceList = sequences;   
   }
 
-  // dont ask why the control need it
-  writeBlock("using Base");
+  // set usings 
+  SimPLProgram.usingList.push("using Base");
   if ((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
-    writeBlock("using Rtcp");
+    SimPLProgram.usingList.push("using Rtcp");
   }
   if (properties.waitAfterOperation) {
-    writeBlock("import System");
+    SimPLProgram.usingList.push("import System");
   }
-  writeBlock(" ");
-
-  // scan all operations for the parametric feed commands
-  var feedDeclaration = new Array();
+ 
+  // set paramtric feed variables
+  //var feedDeclaration = new Array();
   var currentMovements = new Array();
   var numberOfSections = getNumberOfSections();
   for (var i = 0; i < numberOfSections; ++i) {
@@ -553,29 +577,26 @@ function writeProgramHeader() {
       for (var j = 0; j < activeFeeds.length; ++j) {
         var feedContext = activeFeeds[j];
         var feedDescription = formatVariable(feedContext.description);
-        if (feedDeclaration.indexOf(feedDescription) == -1) {
-          feedDeclaration.push(feedDescription);
+        if (SimPLProgram.globalVariableList.indexOf(feedDescription) == -1) {
+          SimPLProgram.globalVariableList.push(feedDescription.toString() + ":number");
         }
       }
     }
   }
 
-  // write all the variable declarations in the header of the program
-  if (!useDatronFeedCommand) {
-    writeComment("feed variables declaration");
-    if (feedDeclaration != 0) {
-      writeBlock(feedDeclaration.join(":number\r\n") + ":number\r\n");
-    }
-  }
-
-  createToolVariables();
-
+  // if (!useDatronFeedCommand) {    
+  //   if (feedDeclaration != 0) {
+  //     SimPLProgram.globalVariableList.push(feedDeclaration);
+  //   }
+  // }
+  SetWriteRedirection(SimPLProgram.mainProgram);
   writeBlock("export program Main # " + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
   spacingDepth += 1;
-
   writeBlock("Absolute");
+  
+  // set the parameter tool table
+  SimPLProgram.globalVariableList.push(createToolVariables());
 
-  // write the parameter tool table
   if (!properties.writeToolTable) {
     var tools = getToolTable();
     writeComment("Number of tools in use" + ": " + tools.getNumberOfTools());
@@ -593,12 +614,16 @@ function writeProgramHeader() {
       writeBlock(" ");
     }
   }
+  ResetWriteRedirection();
 }
 
 
 function writeWorkpiece() {
+  var workpieceString = new StringBuffer();
+  SetWriteRedirection(workpieceString);
   var workpiece = getWorkpiece();
   var delta = Vector.diff(workpiece.upper, workpiece.lower);
+
 
   writeBlock("# Workpiece dimensions");
   writeBlock(
@@ -621,7 +646,8 @@ function writeWorkpiece() {
     "\"" + "Y" + "\"" + ":" + workpieceFormat.format(workpiece.upper.y) + "," +
     "\"" + "Z" + "\"" + ":" + workpieceFormat.format(workpiece.upper.z) + "}" +
     " @");
-  writeBlock(" ");
+  ResetWriteRedirection();
+  return workpieceString;
 }
 
 function onComment(message) {
@@ -945,6 +971,9 @@ function getWorkPlaneMachineABC(workPlane) {
 }
 
 function onSection() {
+  // this is the container that hold all operation informations...
+  currentOperation = new NewOperation(getOperationName(currentSection))
+  SetWriteRedirection(currentOperation.operationProgram);
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
   var tool = currentSection.getTool();
@@ -1275,7 +1304,7 @@ function onSection() {
       sequenceFilePath += currentSequenceName + ".seq";
       redirectToFile(sequenceFilePath);
     } else {
-      redirectToBuffer();
+      SetWriteRedirection(sequenceBuffer);
       writeBlock(" ");
       // TAG: modify parameter
       spacingDepth -= 1;
@@ -1513,6 +1542,32 @@ function onRewindMachine(a, b, c) {
   writeBlock("Line" + abc);
 }
 
+
+function onManualNC(command, value) {   
+    
+    var tokens = value.trim().split(" "); 
+    if(tokens[0] == "using"){
+      SimPLProgram.usingList.push(value);
+    } else{
+      var operation = {operationCall: value,operationProgram:""}
+      SimPLProgram.operationList.push(operation);
+    }
+    
+    // writeBlock(value);
+  // manualNC.push({
+  //   command: command,
+  //   value: value,
+  //   sectionId: (typeof currentSection !== "undefined") ? currentSection.getId() : -1
+  // });
+  // switch (command) {
+  //   case COMMAND_STOP:
+  //     writeComment("Hard stop");
+  //     break;
+  //   default:
+  //     onUnsupportedManualNC(command, value);
+  // }
+}
+
 var currentCoolantMode = COOLANT_OFF;
 
 function setCoolant(coolant) {
@@ -1553,7 +1608,6 @@ function setCoolant(coolant) {
 var mapCommand = {};
 
 var passThrough = new Array();
-
 function onPassThrough(text) {
   passThrough.push(text);
 }
@@ -1584,6 +1638,8 @@ function onCommand(command) {
   case COMMAND_OPTIONAL_STOP:
      writeComment("Optional Stop");
 
+    return;
+  default:
     return;
    
   }
@@ -2124,9 +2180,8 @@ function onSectionEnd() {
 
   if (properties.useSequences && !isProbeOperation(currentSection)) {
     if (!properties.useExternalSequencesFiles) {
-      sequenceBuffer.append(getRedirectionBuffer());
-    }
-    closeRedirection();
+      ResetWriteRedirection();
+    }   
     spacingDepth += 1;
   }
 
@@ -2136,8 +2191,8 @@ function onSectionEnd() {
   spacingDepth -= 1;
 
   writeBlock("endprogram " + "# " + getOperationName(currentSection));
-
-  writeBlock(" ");
+  ResetWriteRedirection();
+  SimPLProgram.operationList.push(currentOperation);
   forceAny();
 }
 
@@ -2147,6 +2202,29 @@ function onClose() {
     writeWaitProgram();
   }
 
+  writeBlock(SimPLProgram.moduleName);
+  writeBlock("");
+  writeBlock(SimPLProgram.toolDescriptionList.join("\r\n") + "\r\n");
+  writeBlock("");
+  writeBlock(SimPLProgram.workpieceGeometry);
+  writeBlock("");
+  writeBlock(SimPLProgram.sequenceList.join("\r\n") + "\r\n");
+  writeBlock("");
+  writeBlock(SimPLProgram.usingList.join("\r\n") + "\r\n");
+  writeBlock("");
+  writeBlock(SimPLProgram.globalVariableList.join("\r\n") + "\r\n");
+  writeBlock("");
+ 
+  finishMainProgram();
+  writeBlock(SimPLProgram.mainProgram);
+  writeBlock("");
+
+  SimPLProgram.operationList.forEach(function (operation){
+    if(operation != undefined){
+      writeBlock(operation.operationProgram);
+    }   
+  })
+
   writeBlock("end");
 
   if (properties.useSequences && !properties.useExternalSequencesFiles) {
@@ -2154,3 +2232,35 @@ function onClose() {
     writeBlock(sequenceBuffer.toString());
   }
 }
+
+// after all the oiperation calls are set close the main program with all the calls
+function finishMainProgram(){
+  // write the main program footer
+  SetWriteRedirection(SimPLProgram.mainProgram);
+  spacingDepth += 1;
+
+  // write all subprogram calls in the main Program 
+  SimPLProgram.operationList.forEach(function(operation){
+    if(operation!=undefined){
+      writeBlock(operation.operationCall);
+    }
+  
+  })
+
+  writeBlock("SpraySystem Off");
+  writeBlock("Spindle Off");
+
+  setWorkPlane(new Vector(0, 0, 0)); // reset working plane
+  if (properties.useParkPosition) {
+    writeBlock("MoveToParkPosition");
+  } else {
+    writeBlock("MoveToSafetyPosition");
+    zOutput.reset();
+  }
+
+  spacingDepth -= 1;
+  writeBlock("endprogram #" + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
+  ResetWriteRedirection();
+}
+
+
