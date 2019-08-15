@@ -135,6 +135,7 @@ function NewSimPLProgram(){
   this.workpieceGeometry = "";
   this.sequenceList = new Array();
   this.usingList = new Array();
+  this.externalUsermodules = new Array();
   this.globalVariableList = new Array();
   this.mainProgram = new StringBuffer();
   this.operationList = new Array();
@@ -547,7 +548,7 @@ function writeProgramHeader() {
     for (var i = 0; i < numberOfSections; ++i) {
       var section = getSection(i);
 			if (!isProbeOperation(section)) {
-				sequences.push(getSequenceName(section));
+				sequences.push("sequence " + getSequenceName(section));
 			}
     }
     if (properties.useExternalSequencesFiles) {
@@ -577,8 +578,8 @@ function writeProgramHeader() {
       for (var j = 0; j < activeFeeds.length; ++j) {
         var feedContext = activeFeeds[j];
         var feedDescription = formatVariable(feedContext.description);
-        if (SimPLProgram.globalVariableList.indexOf(feedDescription) == -1) {
-          SimPLProgram.globalVariableList.push(feedDescription.toString() + ":number");
+        if (SimPLProgram.globalVariableList.indexOf(feedDescription + ":number") == -1) {
+          SimPLProgram.globalVariableList.push(feedDescription + ":number");
         }
       }
     }
@@ -1579,18 +1580,21 @@ function setCoolant(coolant) {
   }
 }
 
-
+function extractHeaderDeclarations(text){ 
+  var patt = new RegExp("\.*(using|import)");
+  var res = patt.test(text);
+  if(res){     
+    SimPLProgram.usingList.push(text);
+    return;
+  }  
+  return text;
+}
 
 function onManualNC(command, value) { 
   switch (command) {
     case 42: // Manual NC enumeration code ???
-      var tokens = value.trim().split(" "); 
-      if(tokens[0] == "using"){
-        SimPLProgram.usingList.push(value);
-        return;
-      } else{
-        break
-      }      
+      value = extractHeaderDeclarations(value);
+      break;
     case 40:  // Comment
       value = "# " + value;
       break;  
@@ -1607,8 +1611,8 @@ function onManualNC(command, value) {
       value = "break";      
       break;  
     case COMMAND_START_SPINDLE:
-        value = "Spindle On";      
-        break;  
+      value = "Spindle On";      
+      break;  
     case COMMAND_LOCK_MULTI_AXIS:
       return;
     case COMMAND_UNLOCK_MULTI_AXIS:
@@ -1657,10 +1661,16 @@ function onManualNC(command, value) {
       value = "OptionalBreak";  
       break;
     case 45: //call subprogram
+      var subprogramName = "SubProgram_" + SimPLProgram.externalUsermodules.length;
+      SimPLProgram.externalUsermodules.push('usermodule ' + subprogramName + '="' + value + '"');      
+      value = subprogramName;
       break;
     } 
-    var operation = {operationCall: value, operationProgram:""}
-    SimPLProgram.operationList.push(operation);
+
+    if(value != undefined){      
+      var operation = {operationCall: value, operationProgram:""}
+      SimPLProgram.operationList.push(operation);
+    }    
 }
 
 var mapCommand = {};
@@ -2238,6 +2248,8 @@ function onClose() {
   writeBlock(SimPLProgram.sequenceList.join("\r\n") + "\r\n");
   writeBlock("");
   writeBlock(SimPLProgram.usingList.join("\r\n") + "\r\n");
+  writeBlock("");
+  writeBlock(SimPLProgram.externalUsermodules.join("\r\n") + "\r\n");
   writeBlock("");
   writeBlock(SimPLProgram.globalVariableList.join("\r\n") + "\r\n");
   writeBlock("");
