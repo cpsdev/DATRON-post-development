@@ -1580,20 +1580,47 @@ function setCoolant(coolant) {
   }
 }
 
-function extractHeaderDeclarations(text){ 
-  var patt = new RegExp("\.*(using|import)");
-  var res = patt.test(text);
-  if(res){     
+var isInsideProgramDeclaration = false;
+var directNcOperation; 
+function ParseManualNc(text){ 
+ 
+  var modulePattern = new RegExp("\.*(using|import)");
+  var isModuleImport = modulePattern.test(text);
+  if(isModuleImport){     
     SimPLProgram.usingList.push(text);
     return;
   }  
-  return text;
+ 
+  var programPattern = /(?:\s*program\s+)(\w+)/;
+  var isProgramDeclaration = programPattern.test(text); 
+
+  if(isProgramDeclaration){
+   var subProgramName =  programPattern.exec(text);
+   if(subProgramName == undefined) return;
+   directNcOperation = {operationCall:subProgramName[1],operationProgram: new StringBuffer()};    
+   SimPLProgram.operationList.push(directNcOperation);
+   isInsideProgramDeclaration = true;    
+  }
+
+  var isEndProgram = /\s*endprogram/.test(text);
+  if(isEndProgram){
+    isInsideProgramDeclaration = false;
+    directNcOperation.operationProgram.append(text + "\r\n");
+    return;
+  }
+
+  if (isInsideProgramDeclaration){
+    directNcOperation.operationProgram.append(text + "\r\n");
+    return;
+  }
+
+  return text;    
 }
 
 function onManualNC(command, value) { 
   switch (command) {
     case 42: // Manual NC enumeration code ???
-      value = extractHeaderDeclarations(value);
+      value = ParseManualNc(value);
       break;
     case 40:  // Comment
       value = "# " + value;
@@ -1637,11 +1664,12 @@ function onManualNC(command, value) {
     case COMMAND_CLEAN: // clean part
       value = 'Dialog message="Please clean workpiece!" Ok Cancel caption="Cam generated dialog"'
       break;
-    case 43: // action no idea for what has a paramter
+    case 43: // action no idea for what has a paramter  
       value = "# Action currently not supported!"
       break;
     case 44: // print message
-      return;
+      value = 'Dialog message="' + value + '" Ok Cancel caption="Cam generated dialog"'
+      break;
     case 46: // show message
       value = 'StatusMessage message="' + value + '"';
       break;
