@@ -1356,7 +1356,7 @@ function writeWaitProgram() {
 }
 
 function onDwell(seconds) {
-  writeln("Sleep " + "milliseconds=" + sleepFormat.format(seconds));
+  writeBlock("Sleep " + "milliseconds=" + sleepFormat.format(seconds));
 }
 
 function onSpindleSpeed(spindleSpeed) {
