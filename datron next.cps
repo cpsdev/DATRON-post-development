@@ -1818,7 +1818,7 @@ function onCyclePoint(x, y, z) {
   
     var measureString = "SurfaceMeasure ";
     measureString += " originZShift=" + xyzFormat.format(z - cycle.depth);
-    writeBlock(measureString);
+    writeBlock(measureString);   
     break;
   case "probing-x-wall":
     var measureString = "SymmetryAxisMeasure";
@@ -2103,7 +2103,14 @@ function onCyclePoint(x, y, z) {
     break;
   default:
     expandCyclePoint(x, y, z);
+    return;
   }
+
+  // save probing result in defined wcs
+  if(currentSection.workOffset != null){      
+    writeBlock('SaveWcs name="' + currentSection.workOffset + '"');
+  }
+
   return;
 }
 
