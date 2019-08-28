@@ -1674,8 +1674,7 @@ function onManualNC(command, value) {
       value = "# Action currently not supported!"
       break;
     case 44: // print message
-     // value = 'Dialog message="' + value + '" Ok Cancel caption="Cam generated dialog"'
-
+      // value = 'Dialog message="' + value + '" Ok Cancel caption="Cam generated dialog"'
       SimPLProgram.usingList.push('using File'); 
       SimPLProgram.usingList.push('using DateTimeModule') 
       var message = (' value=(GetNow + "\t' + value + '")')    
