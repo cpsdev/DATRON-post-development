@@ -1037,10 +1037,10 @@ function onSection() {
         break;
       case 'MX':
       case 'CUBE':     
-        if (operationTolerance <= (unit == MM ? 0.02 : (0.02/25.4))) {
+        if (operationTolerance <= (unit == MM ? 0.04 : (0.04/25.4))) {
           dynamic = 4;
         }
-        if (operationTolerance <= (unit == MM ? 0.04 : (0.04/25.4))) {
+        if (operationTolerance <= (unit == MM ? 0.02 : (0.02/25.4))) {
           dynamic = 3;
         }
         if (operationTolerance <= (unit == MM ? 0.005 : (0.005/25.4))) {
