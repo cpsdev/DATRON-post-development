@@ -167,6 +167,12 @@ function getSequenceName(section) {
   return sequenceName;
 }
 
+function getFilename(){
+  var filePath = getOutputPath();
+  var filename = filePath.slice(filePath.lastIndexOf("\\")+1, filePath.lastIndexOf("."));
+  return filename;
+}
+
 function getOperationName(section) {
   return "Operation_" + getOperationDescription(section);
 }
@@ -1668,7 +1674,12 @@ function onManualNC(command, value) {
       value = "# Action currently not supported!"
       break;
     case 44: // print message
-      value = 'Dialog message="' + value + '" Ok Cancel caption="Cam generated dialog"'
+     // value = 'Dialog message="' + value + '" Ok Cancel caption="Cam generated dialog"'
+
+      SimPLProgram.usingList.push('using File'); 
+      SimPLProgram.usingList.push('using DateTimeModule') 
+      var message = (' value=(GetNow + "\t' + value + '")')    
+      value = 'FileWriteLine filename="' + getFilename() + '.log"'  + message;
       break;
     case 46: // show message
       value = 'StatusMessage message="' + value + '"';
