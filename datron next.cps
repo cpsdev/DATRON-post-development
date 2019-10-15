@@ -2117,7 +2117,7 @@ function onCyclePoint(x, y, z) {
   }
 
   // save probing result in defined wcs
-  if(currentSection.workOffset != null){      
+  if(isProbeOperation(currentSection) && currentSection.workOffset != null){      
     writeBlock('SaveWcs name="' + currentSection.workOffset + '"');
   }
 
