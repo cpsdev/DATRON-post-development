@@ -1035,31 +1035,39 @@ function onSection() {
   }
 
   if (properties.useDynamic) {
-    var dynamic = 5;
-     // set machine type specific dynamic sets
-    switch(properties.machineType){     
-      case 'NEO':
-        dynamic =5;
-        break;
-      case 'MX':
-      case 'CUBE':     
-        if (operationTolerance <= (unit == MM ? 0.04 : (0.04/25.4))) {
-          dynamic = 4;
-        }
-        if (operationTolerance <= (unit == MM ? 0.02 : (0.02/25.4))) {
-          dynamic = 3;
-        }
-        if (operationTolerance <= (unit == MM ? 0.005 : (0.005/25.4))) {
-          dynamic = 2;
-        }
-        if (operationTolerance <= (unit == MM ? 0.003 : (0.003/25.4))) {
-          dynamic = 1;
-        }
-        break;
-    }
-   	
-    writeBlock("Dynamic = " + dynamic);
+    var dynamic = 5;  
+    operationName = getOperationName(currentSection).toUpperCase();
+    dynamicIndex = operationName.lastIndexOf("DYN") + 3;
+    expliciteDynamic = parseInt(operationName.substring(dynamicIndex,dynamicIndex+1))
+    if ((expliciteDynamic != NaN) && (expliciteDynamic> 0 && expliciteDynamic < 6)){
+      writeBlock("Dynamic = " + expliciteDynamic +  "  # Created from Operation Name");  
+      dynamic = expliciteDynamic     
+    } else {                  
+      // set machine type specific dynamic sets
+      switch(properties.machineType){     
+        case 'NEO':
+          dynamic =5;
+          break;
+        case 'MX':
+        case 'CUBE':     
+          if (operationTolerance <= (unit == MM ? 0.04 : (0.04/25.4))) {
+            dynamic = 4;
+          }
+          if (operationTolerance <= (unit == MM ? 0.02 : (0.02/25.4))) {
+            dynamic = 3;
+          }
+          if (operationTolerance <= (unit == MM ? 0.005 : (0.005/25.4))) {
+            dynamic = 2;
+          }
+          if (operationTolerance <= (unit == MM ? 0.003 : (0.003/25.4))) {
+            dynamic = 1;
+          }
+          break;
+      }
+      writeBlock("Dynamic = " + dynamic);  
+    }    
   }
+
   if (properties.waitAfterOperation) {
     showWaitDialog();
   }
