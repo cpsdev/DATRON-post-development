@@ -2339,7 +2339,10 @@ function finishMainProgram(){
   
   })
 
-  writeBlock("SpraySystem Off");
+  if (properties.writeCoolantCommands) {
+    writeBlock("SpraySystem Off");
+  }
+  
   writeBlock("Spindle Off");
 
   setWorkPlane(new Vector(0, 0, 0)); // reset working plane
