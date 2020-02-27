@@ -61,6 +61,9 @@ properties = {
   preloadTool: false, //prepare a Tool for the DATROn tool assist
   writePathOffset:true, //write the definition for the PathOffset variable for every Operation
   useRtcp:false,
+  rampLength: 40,
+  rampZBindingDepth: 1, 
+  useClosedContour:true,
 };
 
  
@@ -583,7 +586,7 @@ function writeProgramHeader() {
 
   // set usings 
   SimPLProgram.usingList.push("using Base");
-  SimPLProgram.usingList.push("using Dispensing");
+  SimPLProgram.usingList.push("using DispensingCycles");
   
   if ((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
     SimPLProgram.usingList.push("using Rtcp");
@@ -620,7 +623,7 @@ function writeProgramHeader() {
   spacingDepth += 1;
   writeBlock("Absolute");
 
-  writeBlock("DispensingTechnology P=1 D=0.02");
+  writeBlock("DispensingTechnology P=1 D=0.025");
   writeBlock("DispensingVolume crossSection=2");
   writeBlock("");
 
@@ -1022,7 +1025,6 @@ function onSection() {
       writeComment("ZMIN = " + xyzFormat.format(zRange.getMinimum()));
     }
   }
-
   // create sub program
   writeBlock("program " + getOperationName(currentSection));
   spacingDepth += 1;
@@ -1061,6 +1063,7 @@ function onSection() {
   if (properties.useDynamic) {
     var dynamic = 5;
      // set machine type specific dynamic sets
+     /*
     switch(properties.machineType){     
       case 'NEO':
         dynamic =5;
@@ -1081,7 +1084,7 @@ function onSection() {
         }
         break;
     }
-   	
+   	*/
     writeBlock("Dynamic = " + dynamic);
   }
   if (properties.waitAfterOperation) {
@@ -1208,6 +1211,15 @@ function onSection() {
     //   }          
     // }
 
+
+    // write dispense specific paramters
+    SimPLProgram.globalVariableList.push("rampLength:number");
+    SimPLProgram.globalVariableList.push("zBindingDepth:number");
+   
+    writeBlock("rampLength = " + properties.rampLength);
+    writeBlock("zBindingDepth = " + properties.rampZBindingDepth);
+
+
     // set the current feed
     // replace by the default feed command
     if (properties.useParametricFeed && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
@@ -1314,6 +1326,9 @@ function onSection() {
   }
 
   if (properties.useSequences && !isProbeOperation(currentSection)) {
+    sequenceParamter.push("rampLength=rampLength");
+    sequenceParamter.push("zBindingDepth=zBindingDepth");
+
     // call sequence
     if (properties.useParametricFeed && (!useDatronFeedCommand) && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
       activeFeeds = initializeActiveFeeds(currentSection);
@@ -1757,13 +1772,21 @@ function onCommand(command) {
   if (mcode != undefined) {
     writeBlock(mFormat.format(mcode));
   } else {
-    if(command == COMMAND_POWER_ON ){
-      writeBlock("DispensingPump On");
+    if(properties.useClosedContour){
+      if(command == COMMAND_POWER_ON ){
+        writeBlock("BeginClosedContour rampLength=rampLength zBindingDepth=zBindingDepth");
+      }
+      if(command == COMMAND_POWER_OFF ){
+        writeBlock("EndClosedContour");
+      }
+    }else{   
+      if(command == COMMAND_POWER_ON ){
+        writeBlock("DispensingPump On");
+      }
+      if(command == COMMAND_POWER_OFF ){
+        writeBlock("DispensingPump Off");
+      }
     }
-    if(command == COMMAND_POWER_OFF ){
-      writeBlock("DispensingPump Off");
-    }
-    
    
   //  onUnsupportedCommand(command);
   }
