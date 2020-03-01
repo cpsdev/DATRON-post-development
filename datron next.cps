@@ -1157,7 +1157,7 @@ function onSection() {
         writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
         break;
       case 'inverseWear':   
-        writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation * -1));
+        writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
         break;    
     }
   }
@@ -1428,20 +1428,49 @@ function onLinear(x, y, z, feed) {
     pendingRadiusCompensation = -1;
     var d = tool.diameterOffset;
     if (d > 99) {
-      warning(localize("The diameter offset exceeds the maximum value."));
+      warning(localize("The diameter offset exceeds the maximum value."));      
     }
     // TAG: um die Ebenen kuemmern
     // writeBlock(gPlaneModal.format(17));
+    var compensationType = null;
+    if( currentSection.hasParameter("operation:compensationType")){
+      compensationType = currentSection.getParameter("operation:compensationType");  
+    }
+    
     switch (radiusCompensation) {
-    case RADIUS_COMPENSATION_LEFT:
-      writeBlock("ToolCompensation Left");
-      writeBlock("PathCorrection Left");      
+    case RADIUS_COMPENSATION_LEFT:  
+      switch(compensationType){        
+        case 'control':
+          writeBlock("ToolCompensation Left");
+          writeBlock("PathCorrection Left");   
+          break;
+        case 'wear':
+        case 'inverseWear':
+          writeBlock("PathCorrection Left");      
+          break;        
+        default:
+          writeBlock("ToolCompensation Off");
+          writeBlock("PathCorrection Off");      
+          break;
+      }          
       break;
-    case RADIUS_COMPENSATION_RIGHT:
-      writeBlock("ToolCompensation Right");
-      writeBlock("PathCorrection Right");      
+    case RADIUS_COMPENSATION_RIGHT:      
+      switch(compensationType){
+        case 'control':
+          writeBlock("ToolCompensation Rigth");
+          writeBlock("PathCorrection Rigth");   
+          break;       
+        case 'wear':
+        case 'inverseWear':
+          writeBlock("PathCorrection Rigth");      
+          break;
+        default:
+          writeBlock("ToolCompensation Off");
+          writeBlock("PathCorrection Off");      
+          break;
+      }          
       break;
-    case RADIUS_COMPENSATION_OFF:
+    case RADIUS_COMPENSATION_OFF:   
       writeBlock("ToolCompensation Off");
       writeBlock("PathCorrection Off");      
       break;
