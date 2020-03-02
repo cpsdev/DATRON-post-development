@@ -76,7 +76,7 @@ propertyDefinitions = {
   writeCoolantCommands: {title:"Write coolant commands", description:"Enable/disable coolant code outputs for the entire program.", type:"boolean"},
   useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
   waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop is outputted to pause after each operation.", type:"boolean"},
-  rotationAxisSetup : {title:"Setup rotatry axis",description:"define if the machine is setup with additional rotary axis.", type:"enum",
+  rotationAxisSetup : {title:"Setup rotary axis",description:"define if the machine is setup with additional rotary axis.", type:"enum",
     values:[
         {title:"No rotary axis",id:"NONE"},
         {title:"4th axis along X+",id:"4th"},
@@ -264,7 +264,7 @@ function formatVariable(text) {
 
 function onOpen() {
   // note: setup your machine here
-  if (properties.rotationAxisSetup = "4th") {
+  if (properties.rotationAxisSetup == "4th") {
     var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[0, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis);
     machineConfiguration.setVendor("DATRON");
@@ -275,7 +275,7 @@ function onOpen() {
   }
 
    // note: setup your machine here
-   if (properties.rotationAxisSetup = "DST") {
+   if (properties.rotationAxisSetup == "DST") {
     var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[-10, 110], cyclic:false, preference:0});
     var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, 1], range:[-360, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis,cAxis);
@@ -604,7 +604,7 @@ function writeProgramHeader() {
   writeBlock("Absolute");
 
   // ste the multiaxis mode
-  if(properties.rotationAxisSetup != "NONE"){
+  if(properties.rotationAxisSetup != "NONE" && properties.useRtcp){
     writeBlock("MultiAxisMode On");
   }
   
@@ -2381,7 +2381,7 @@ function finishMainProgram(){
     writeBlock("SpraySystem Off");
   }
     
-  if(properties.rotationAxisSetup != "NONE"){
+  if(properties.rotationAxisSetup != "NONE" && properties.useRtcp){
     writeBlock("MultiAxisMode Off");
     writeBlock("Rtcp Off");
   }
