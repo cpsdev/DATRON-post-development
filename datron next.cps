@@ -51,9 +51,9 @@ properties = {
   rotationAxisSetup : "none", // define the rotatry axis setup for the machine
   useSuction: false, // activate suction support
   createThreadChamfer: false, // create a chamfer with the thread milling tool
-  preloadTool: false, //prepare a Tool for the DATROn tool assist
-  writePathOffset:true, //write the definition for the PathOffset variable for every Operation
-  useRtcp:false,
+  preloadTool : false, //prepare a Tool for the DATROn tool assist
+  writePathOffset : true, //write the definition for the PathOffset variable for every Operation
+  useRtcp : false  // use the NEXT feature RTCP for multiaxis operations
 };
 
  
@@ -568,7 +568,7 @@ function writeProgramHeader() {
 
   // set usings 
   SimPLProgram.usingList.push("using Base");
-  if (properties.rotationAxisSetup != "NONE" && properties.useRtcp){
+  if (properties.rotationAxisSetup != "NONE"){
     SimPLProgram.usingList.push("using Rtcp");
   }
   if (properties.waitAfterOperation) {
@@ -602,6 +602,11 @@ function writeProgramHeader() {
   writeBlock("export program Main # " + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
   spacingDepth += 1;
   writeBlock("Absolute");
+
+  // ste the multiaxis mode
+  if(properties.rotationAxisSetup != "NONE"){
+    writeBlock("MultiAxisMode On");
+  }
   
   // set the parameter tool table
   SimPLProgram.globalVariableList.push(createToolVariables());
@@ -917,7 +922,7 @@ function setWorkPlane(abc) {
   forceWorkPlane(); // always need the new workPlane
 	forceABC();
   if((properties.rotationAxisSetup != "NONE") && properties.useRtcp){
-    writeBlock("MoveZToTopPosition");
+    writeBlock("MoveToSafetyPosition");
   }else{
     writeBlock("MoveToSafetyPosition");
   }
@@ -2369,18 +2374,21 @@ function finishMainProgram(){
   SimPLProgram.operationList.forEach(function(operation){
     if(operation!=undefined){
       writeBlock(operation.operationCall);
-    }
-  
+    }  
   })
 
   if (properties.writeCoolantCommands) {
     writeBlock("SpraySystem Off");
   }
-  
-  writeBlock("Spindle Off");
+    
+  if(properties.rotationAxisSetup != "NONE"){
+    writeBlock("MultiAxisMode Off");
+    writeBlock("Rtcp Off");
+  }
 
   setWorkPlane(new Vector(0, 0, 0)); // reset working plane
   if (properties.useParkPosition) {
+    writeBlock("Spindle Off");
     writeBlock("MoveToParkPosition");
   } else {
     writeBlock("MoveToSafetyPosition");
