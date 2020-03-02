@@ -7,3 +7,6 @@ old/DATRON SimPL A Axis.CPS
 export cnc file to vs code.cps
 *.json
 grbl.cps
+
+setup-sheet.css
+setup-sheet.cps
