@@ -1153,14 +1153,16 @@ function onSection() {
       case 'computer':      
         break;
       case 'control':      
-        writeBlock("PathOffset = 0")      
+        writeBlock("PathOffset = 0")   
+        writeBlock("ZAxisOffset = 0");
         break;
       case 'wear': 
-
         writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
+        writeBlock("ZAxisOffset = 0");
         break;
       case 'inverseWear':   
         writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
+        writeBlock("ZAxisOffset = 0");
         break;    
     }
   }
