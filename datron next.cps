@@ -47,9 +47,8 @@ properties = {
   useExternalSequencesFiles : false, // this property create one external sequence files for each operation
   writeCoolantCommands : true, // disable the coolant commands in the file
   useParametricFeed : true, // specifies that feed should be output using parameters
-  waitAfterOperation : false, // optional stop
-  got4thAxis: false, // specifies if the machine has a rotational 4th axis
-  got5thAxis: false, // activate the RTCP options
+  waitAfterOperation : false, // optional stop 
+  rotationAxisSetup : "none", // define the rotatry axis setup for the machine
   useSuction: false, // activate suction support
   createThreadChamfer: false, // create a chamfer with the thread milling tool
   preloadTool: false, //prepare a Tool for the DATROn tool assist
@@ -77,8 +76,12 @@ propertyDefinitions = {
   writeCoolantCommands: {title:"Write coolant commands", description:"Enable/disable coolant code outputs for the entire program.", type:"boolean"},
   useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
   waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop is outputted to pause after each operation.", type:"boolean"},
-  got4thAxis: {title:"Has 4th axis", description:"Enable if the machine is equipped with a 4-axis.", type:"boolean"},
-  got5thAxis: {title:"Has 5th axis", description:"Enable if the machine is equipped with a DST.", type:"boolean"},
+  rotationAxisSetup : {title:"Setup rotatry axis",description:"define if the machine is setup with additional rotary axis.", type:"enum",
+    values:[
+        {title:"No rotary axis",id:"NONE"},
+        {title:"4th axis along X+",id:"4th"},
+        {title:"DST (4th & 5th axis)",id:"DST"}
+    ]},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
   createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
   preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."},
@@ -261,7 +264,7 @@ function formatVariable(text) {
 
 function onOpen() {
   // note: setup your machine here
-  if (properties.got4thAxis && !properties.got5thAxis) {
+  if (properties.rotationAxisSetup = "4th") {
     var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[0, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis);
     machineConfiguration.setVendor("DATRON");
@@ -272,7 +275,7 @@ function onOpen() {
   }
 
    // note: setup your machine here
-   if (properties.got4thAxis && properties.got5thAxis) {
+   if (properties.rotationAxisSetup = "DST") {
     var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[-10, 110], cyclic:false, preference:0});
     var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, 1], range:[-360, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis,cAxis);
@@ -565,7 +568,7 @@ function writeProgramHeader() {
 
   // set usings 
   SimPLProgram.usingList.push("using Base");
-  if ((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
+  if (properties.rotationAxisSetup != "NONE" && properties.useRtcp){
     SimPLProgram.usingList.push("using Rtcp");
   }
   if (properties.waitAfterOperation) {
@@ -913,7 +916,7 @@ function setWorkPlane(abc) {
 
   forceWorkPlane(); // always need the new workPlane
 	forceABC();
-  if((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
+  if((properties.rotationAxisSetup != "NONE") && properties.useRtcp){
     writeBlock("MoveZToTopPosition");
   }else{
     writeBlock("MoveToSafetyPosition");
@@ -1076,7 +1079,7 @@ function onSection() {
       forceWorkPlane();
       cancelTransformation();
       var abc = currentSection.getInitialToolAxisABC();
-      if((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
+      if((properties.rotationAxisSetup != "NONE") && properties.useRtcp){
         writeBlock("Rtcp On");
       }  
       writeBlock("MoveToSafetyPosition");    
@@ -1086,7 +1089,7 @@ function onSection() {
       var abc = getWorkPlaneMachineABC(currentSection.workPlane);
       
       setWorkPlane(abc);      
-      if((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
+      if((properties.rotationAxisSetup != "NONE") && properties.useRtcp){
         writeBlock("Rtcp On");
       }
     }
@@ -1099,7 +1102,8 @@ function onSection() {
          "\r\n|                                        |" +
          "\r\n| Tool orientation detected.             |" +
          "\r\n| You have to enable the property        |" +
-         "\r\n| got4thAxis, otherwise you can only post|" +
+         "\r\n| rotationAxisSetup                      |" + 
+         "\r\n| rotherwise you can only post           |" +
          "\r\n| 3 Axis programs.                       |" +
          "\r\n| If you still have issues,              |" +
          "\r\n| please contact www.DATRON.com!         |" +
@@ -2287,7 +2291,7 @@ function dump(name, _arguments) {
 function onSectionEnd() {
   writeBlock("ToolCompensation Off");
   writeBlock("PathCorrection Off");
-  if (currentSection.isMultiAxis && (properties.got4thAxis || properties.got5thAxis) && properties.useRtcp){
+  if (currentSection.isMultiAxis && (properties.rotationAxisSetup != "NONE") && properties.useRtcp){
     writeBlock("Rtcp Off");
   }
 
