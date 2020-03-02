@@ -53,6 +53,7 @@ properties = {
   createThreadChamfer: false, // create a chamfer with the thread milling tool
   preloadTool : false, //prepare a Tool for the DATROn tool assist
   writePathOffset : true, //write the definition for the PathOffset variable for every Operation
+  useZAxisOffset : false,
   useRtcp : false  // use the NEXT feature RTCP for multiaxis operations
 };
 
@@ -84,8 +85,10 @@ propertyDefinitions = {
     ]},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
   createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
-  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."},
-  writePathOffset:{title:"Write Path Offset", description:"Write the PathOffset declaration."}
+  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."},  
+  writePathOffset:{title:"Write Path Offset", description:"Write the PathOffset declaration."},
+  useZAxisOffset:{title:"Output Z Offset command",description:"This creates a command to allow a manual Z offset for each operation.",type:"boolean"},
+  useRtcp:{title:"Use RTCP", description:"Use the NEXT 5axis setup correction.",type:"boolean"}
 }
 
 var gFormat = createFormat({prefix:"G", width:2, zeropad:true, decimals:1});
@@ -1138,6 +1141,12 @@ function onSection() {
   var clearance = getFramePosition(currentSection.getInitialPosition()).z;
   writeBlock("SafeZHeightForWorkpiece=" + xyzFormat.format(clearance));
 
+
+  // write the optional length offset for each operation
+  if(properties.useZAxisOffset){
+    writeBlock("ZAxisOffset = 0");
+  }
+
   // radius Compensation
   var compensationType
   if(hasParameter('operation:compensationType')){
@@ -1159,15 +1168,12 @@ function onSection() {
         break;
       case 'control':      
         writeBlock("PathOffset = 0")   
-        writeBlock("ZAxisOffset = 0");
-        break;
+         break;
       case 'wear': 
         writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
-        writeBlock("ZAxisOffset = 0");
         break;
       case 'inverseWear':   
         writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
-        writeBlock("ZAxisOffset = 0");
         break;    
     }
   }
@@ -2298,6 +2304,13 @@ function dump(name, _arguments) {
 function onSectionEnd() {
   writeBlock("ToolCompensation Off");
   writeBlock("PathCorrection Off");
+
+  // reset Z Offset value
+  if(properties.useZAxisOffset){
+    writeBlock("ZAxisOffset = 0");
+  }
+
+
   if (currentSection.isMultiAxis && (properties.rotationAxisSetup != "NONE") && properties.useRtcp){
     writeBlock("Rtcp Off");
   }
