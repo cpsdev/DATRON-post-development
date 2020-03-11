@@ -1262,22 +1262,20 @@ function onSection() {
     case "thread-milling":
       writeBlock("SetFeedTechnology" + " ramp=" + feedFormat.format(getParameter("movement:cutting")) + " finishing=" + feedFormat.format(getParameter("movement:finish_cutting")));
       var diameter = currentSection.getParameter("diameter");
-      var pitch = currentSection.getParameter("pitch");
-      var finishing = currentSection.getParameter("stepover");
-
+      var pitch = currentSection.getParameter("pitch");      
+      var finishing = parseFloat(currentSection.getParameter("stepover"));
+      
       writeBlock("nominalDiameter=" + xyzFormat.format(diameter));
       sequenceParamter.push("nominalDiameter=nominalDiameter");
       writeBlock("pitch=" + xyzFormat.format(pitch));
       sequenceParamter.push("pitch=pitch");
-      writeComment("Test");
-      writeComment("Test "+ (finishing));
-
-      // if (xyzFormat.isSignificant(finishing)) {
-      //   writeBlock("finishing=" + xyzFormat.format(finishing));
-      //   sequenceParamter.push("finishing=finishing");
-      // } else {
-      //   sequenceParamter.push("finishing=0");
-      // }
+ 
+      if (!isNaN(finishing)) {
+        writeBlock("finishing=" + xyzFormat.format(finishing));
+        sequenceParamter.push("finishing=finishing");
+      } else {
+        sequenceParamter.push("finishing=0");
+      }
 /*
       writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
       sequenceParamter.push('threadName=threadName');
