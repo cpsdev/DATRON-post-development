@@ -995,7 +995,7 @@ function onSection() {
   optionalSection = currentSection.isOptional();
   var tool = currentSection.getTool();
 
-  if (!isProbeOperation(currentSection)) {
+  if (!isProbeOperation(currentSection) && hasParameter("operation:cycleTime")) {
     writeComment("Operation Time: " + formatCycleTime(currentSection.getCycleTime()));
   }
 
@@ -1269,12 +1269,15 @@ function onSection() {
       sequenceParamter.push("nominalDiameter=nominalDiameter");
       writeBlock("pitch=" + xyzFormat.format(pitch));
       sequenceParamter.push("pitch=pitch");
-      if (xyzFormat.isSignificant(finishing)) {
-        writeBlock("finishing=" + xyzFormat.format(finishing));
-        sequenceParamter.push("finishing=finishing");
-      } else {
-        sequenceParamter.push("finishing=0");
-      }
+      writeComment("Test");
+      writeComment("Test "+ (finishing));
+
+      // if (xyzFormat.isSignificant(finishing)) {
+      //   writeBlock("finishing=" + xyzFormat.format(finishing));
+      //   sequenceParamter.push("finishing=finishing");
+      // } else {
+      //   sequenceParamter.push("finishing=0");
+      // }
 /*
       writeBlock('threadName="M' +  toolFormat.format(diameter) + '"');
       sequenceParamter.push('threadName=threadName');
