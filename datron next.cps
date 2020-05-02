@@ -84,9 +84,9 @@ propertyDefinitions = {
         {title:"DST (4th & 5th axis)",id:"DST"}
     ]},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
-  createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
-  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."},  
-  writePathOffset:{title:"Write Path Offset", description:"Write the PathOffset declaration."},
+  createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool", type:"boolean"},
+  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist.", type: "boolean"},  
+  writePathOffset:{title:"Write Path Offset", description:"Write the PathOffset declaration.", type: "boolean"},
   useZAxisOffset:{title:"Output Z Offset command",description:"This creates a command to allow a manual Z offset for each operation.",type:"boolean"},
   useRtcp:{title:"Use RTCP", description:"Use the NEXT 5axis setup correction.",type:"boolean"}
 }
