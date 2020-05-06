@@ -84,9 +84,9 @@ propertyDefinitions = {
         {title:"DST (4th & 5th axis)",id:"DST"}
     ]},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
-  createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool"},
-  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist."},  
-  writePathOffset:{title:"Write Path Offset", description:"Write the PathOffset declaration."},
+  createThreadChamfer: {title:"Create a Thread Chamfer",description:"create a chamfer with the thread milling tool", type:"boolean"},
+  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist.", type: "boolean"},  
+  writePathOffset:{title:"Write Path Offset", description:"Write the PathOffset declaration.", type: "boolean"},
   useZAxisOffset:{title:"Output Z Offset command",description:"This creates a command to allow a manual Z offset for each operation.",type:"boolean"},
   useRtcp:{title:"Use RTCP", description:"Use the NEXT 5axis setup correction.",type:"boolean"}
 }
@@ -995,7 +995,7 @@ function onSection() {
   optionalSection = currentSection.isOptional();
   var tool = currentSection.getTool();
 
-  if (!isProbeOperation(currentSection)) {
+  if (!isProbeOperation(currentSection) && hasParameter("operation:cycleTime")) {
     writeComment("Operation Time: " + formatCycleTime(currentSection.getCycleTime()));
   }
 
@@ -1262,14 +1262,15 @@ function onSection() {
     case "thread-milling":
       writeBlock("SetFeedTechnology" + " ramp=" + feedFormat.format(getParameter("movement:cutting")) + " finishing=" + feedFormat.format(getParameter("movement:finish_cutting")));
       var diameter = currentSection.getParameter("diameter");
-      var pitch = currentSection.getParameter("pitch");
-      var finishing = currentSection.getParameter("stepover");
-
+      var pitch = currentSection.getParameter("pitch");      
+      var finishing = parseFloat(currentSection.getParameter("stepover"));
+      
       writeBlock("nominalDiameter=" + xyzFormat.format(diameter));
       sequenceParamter.push("nominalDiameter=nominalDiameter");
       writeBlock("pitch=" + xyzFormat.format(pitch));
       sequenceParamter.push("pitch=pitch");
-      if (xyzFormat.isSignificant(finishing)) {
+ 
+      if (!isNaN(finishing)) {
         writeBlock("finishing=" + xyzFormat.format(finishing));
         sequenceParamter.push("finishing=finishing");
       } else {
