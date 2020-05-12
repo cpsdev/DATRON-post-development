@@ -1079,7 +1079,7 @@ function onSection() {
   }
 
   if (properties.waitAfterOperation) {
-    showWaitDialog();
+    showWaitDialog(getOperationName(currentSection));
   }
 
   if (machineConfiguration.isMultiAxisConfiguration()) {
@@ -1366,24 +1366,26 @@ function onSection() {
 
 
 function showWaitDialog(operationName) {
-  writeBlock("showWaitDialog");
+  writeBlock("showWaitDialog operationName=" + operationName);
 }
 
 function writeWaitProgram() {
-  writeBlock("#Show the wait dialog for the next operation");
-  writeBlock("program showWaitDialog optional operationName:string");
-  writeBlock("");
-  writeBlock("  if not operationName hasvalue ");
-  writeBlock("    operationName =" + "\"" + "\"");
-  writeBlock("  endif");
-  writeBlock("");
-  writeBlock("  messageString = " + "\"" + "Start next Operation\r"  + "\"" + "  + operationName ");
-  writeBlock("  dialogResult = System::Dialog message=messageString caption=" + "\"" + "Start next Operation?" + "\"" + "Yes  Cancel");
-  writeBlock("  if dialogResult == System::DialogResult.Cancel");
-  writeBlock("    exit");
-  writeBlock("  endif");
-  writeBlock("");
-  writeBlock("endprogram");
+  waitProgram = new Array();
+  waitProgram.push("#Show the wait dialog for the next operation\r\n");
+  waitProgram.push("program showWaitDialog optional operationName:string\r\n");
+  waitProgram.push("  if not operationName hasvalue \r\n");
+  waitProgram.push("    operationName =" + "\"" + "\"\r\n");
+  waitProgram.push("  endif\r\n");
+  waitProgram.push("\r\n");
+  waitProgram.push("  messageString = " + "\"" + "Start next Operation\r"  + "\"" + "  + operationName \r\n");
+  waitProgram.push("  dialogResult = System::Dialog message=messageString caption=" + "\"" + "Start next Operation?" + "\"" + "Yes  Cancel\r\n");
+  waitProgram.push("  if dialogResult == System::DialogResult.Cancel\r\n");
+  waitProgram.push("    exit\r\n");
+  waitProgram.push("  endif\r\n");
+  waitProgram.push("endprogram\r\n");
+
+  waitProgramOperation = {operationProgram: waitProgram};
+  SimPLProgram.operationList.push(waitProgramOperation)
 }
 
 function onDwell(seconds) {
