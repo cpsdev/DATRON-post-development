@@ -1366,7 +1366,7 @@ function onSection() {
 
 
 function showWaitDialog(operationName) {
-  writeBlock("showWaitDialog operationName=" + operationName);
+  writeBlock("showWaitDialog operationName=\"" + operationName + "\"");
 }
 
 function writeWaitProgram() {
@@ -1378,8 +1378,8 @@ function writeWaitProgram() {
   waitProgram.push("  endif\r\n");
   waitProgram.push("\r\n");
   waitProgram.push("  messageString = " + "\"" + "Start next Operation\r"  + "\"" + "  + operationName \r\n");
-  waitProgram.push("  dialogResult = System::Dialog message=messageString caption=" + "\"" + "Start next Operation?" + "\"" + "Yes  Cancel\r\n");
-  waitProgram.push("  if dialogResult == System::DialogResult.Cancel\r\n");
+  waitProgram.push("  dialogRes = System::Dialog message=messageString caption=" + "\"" + "Start next Operation?" + "\"" + "Yes  Cancel\r\n");
+  waitProgram.push("  if dialogRes == System::DialogResult.Cancel\r\n");
   waitProgram.push("    exit\r\n");
   waitProgram.push("  endif\r\n");
   waitProgram.push("endprogram\r\n");
