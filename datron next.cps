@@ -1585,15 +1585,14 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
   var b = bOutput.format(_b);
   var c = cOutput.format(_c);
   var f = getFeed(feed);
-
-  writeBlock(feed);
-  // if(f){
-  //   writeBlock(feed);
-  // }
+  
+  if(f){
+    writeBlock(f);
+  }
   if (x || y || z || a || b || c) {
     var xyzabc = x + y + z + a + b + c;
     writeBlock("Line" + xyzabc);
-   } ;
+  };
   //else if (f) {
   //   if (getNextRecord().isMotion()) { // try not to output feed without motion
   //     forceFeed(); // force feed on next line
