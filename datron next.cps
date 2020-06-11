@@ -361,7 +361,7 @@ function getNextTool(number) {
 
 function createToolDescriptionTable() {
   if (!properties.writeToolTable) {
-    return;
+    return new Array();
   }
   
   var toolDescriptionArray = new Array();
@@ -583,6 +583,8 @@ function writeProgramHeader() {
   if (properties.waitAfterOperation) {
     SimPLProgram.usingList.push("import System");
   }
+
+  addInspectionReferences();
  
   // set paramtric feed variables
   //var feedDeclaration = new Array();
@@ -995,6 +997,7 @@ function onSection() {
   // this is the container that hold all operation informations...
   currentOperation = new NewOperation(getOperationName(currentSection));
   setWriteRedirection(currentOperation.operationProgram);
+
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
   var tool = currentSection.getTool();
@@ -1050,7 +1053,7 @@ function onSection() {
     var dynamic = 5;
     operationName = getOperationName(currentSection).toUpperCase();
     dynamicIndex = operationName.lastIndexOf("DYN") + 3;
-    expliciteDynamic = parseInt(operationName.substring(dynamicIndex, dynamicIndex + 1));
+    expliciteDynamic = parseInt(operationName.substring(dynamicIndex, dynamicIndex + 1), 10);
     if ((!isNaN(expliciteDynamic)) && (expliciteDynamic > 0 && expliciteDynamic < 6)) {
       writeBlock("Dynamic = " + expliciteDynamic +  "  # Created from Operation Name");
       dynamic = expliciteDynamic;
@@ -1653,6 +1656,7 @@ var isInsideProgramDeclaration = false;
 var directNcOperation;
 function parseManualNc(text) {
  
+  // eslint-disable-next-line no-useless-escape
   var modulePattern = new RegExp("\.*(using|import)");
   var isModuleImport = modulePattern.test(text);
   if (isModuleImport) {
@@ -2350,7 +2354,7 @@ function onSectionEnd() {
     writeBlock("Suction Off");
   }
 
-  if (properties.useSequences && !isProbeOperation(currentSection)) {
+  if (properties.useSequences && !isProbeOperation(currentSection) && !isInspectionOperation(currentSection)) {
     if (!properties.useExternalSequencesFiles) {
       resetWriteRedirection();
     }
@@ -2367,27 +2371,28 @@ function onSectionEnd() {
   forceAny();
 }
 
-function onClose() {
+function writeBuffer(buffer) {
+  if (buffer.length > 0) {
+    writeBlock(buffer.join("\r\n") + "\r\n");
+    writeBlock("");
+  }
+}
 
+function onClose() {
   if (properties.waitAfterOperation) {
     writeWaitProgram();
   }
-
+  spacingDepth = 0;
+  
   writeBlock(SimPLProgram.moduleName);
   writeBlock("");
-  writeBlock(SimPLProgram.toolDescriptionList.join("\r\n") + "\r\n");
-  writeBlock("");
-  writeBlock(SimPLProgram.workpieceGeometry);
-  writeBlock("");
-  writeBlock(SimPLProgram.sequenceList.join("\r\n") + "\r\n");
-  writeBlock("");
-  writeBlock(SimPLProgram.usingList.join("\r\n") + "\r\n");
-  writeBlock("");
-  writeBlock(SimPLProgram.externalUsermodules.join("\r\n") + "\r\n");
-  writeBlock("");
-  writeBlock(SimPLProgram.globalVariableList.join("\r\n") + "\r\n");
-  writeBlock("");
- 
+  writeBuffer(SimPLProgram.toolDescriptionList);
+  writeBuffer(SimPLProgram.workpieceGeometry);
+  writeBuffer(SimPLProgram.sequenceList);
+  writeBuffer(SimPLProgram.usingList);
+  writeBuffer(SimPLProgram.externalUsermodules);
+  writeBuffer(SimPLProgram.globalVariableList);
+
   finishMainProgram();
   writeBlock(SimPLProgram.mainProgram);
   writeBlock("");
@@ -2438,44 +2443,47 @@ function finishMainProgram() {
   resetWriteRedirection();
 }
 
+// ######################################################################################################################
+// ######################################################################################################################
+// ######################################################################################################################
+// ######################################################################################################################
+// ######################################################################################################################
+// ######################################################################################################################
+// ######################################################################################################################
+// ######################################################################################################################
+// ######################################################################################################################
+// ######################################################################################################################
+
 // code for inspection support
-properties.probeLocalVar = 100; // start address of control local variables that are used for calculations
+//properties.probeLocalVar = 100; // start address of control local variables that are used for calculations
 properties.singleResultsFile = true; // create a single file containing the results for all posted inspection toolpath
 properties.useDirectConnection = false; // determines whether the inspection results are writen to a file or read directly into Fusion
-properties.probeResultsBuffer = 800; // starting address of the FIFO buffer for the probe contact points
-properties.probeNumberofPoints = 4; // maximum number of measurement points stored in the results buffer
+//properties.probeResultsBuffer = 800; // starting address of the FIFO buffer for the probe contact points
+//properties.probeNumberofPoints = 4; // maximum number of measurement points stored in the results buffer
 properties.controlConnectorVersion = 1; // control connector version
 properties.toolOffsetType = "geomOnly";
 properties.commissioningMode = true; // Enables commissioning mode where M0 and messages are output at key points in the program
 // TAG FIXME
-properties.probeOnCommand = "PROBE ON"; // Command to turn the probe on, this can be a M code or sub program call
-properties.probeOffCommand = "PROBE OFF"; // Command to turn the probe off, this can be a M code or sub program call
-properties.probeCalibratedRadius = 0.1; // Parameter used for storing probe calibrated radi
-properties.probeEccentricityX = 0.2; // Parameter used for storing the X eccentricity
-properties.probeEccentricityY = 0.3; // Parameter used for storing the Y eccentricity
+//properties.probeCalibratedRadius = 0.1; // Parameter used for storing probe calibrated radi
 // TAG
-properties.probeCalibrationMethod = "Renishaw"; // determines which calibration parameters are used
-properties.calibrationNCOutput = "none"; // Choose the calibration type if NC is for calibration, or none
 properties.stopOnInspectionEnd = true; // Output M0 after each inspection section to retrieve results
 if (propertyDefinitions === undefined) {
   propertyDefinitions = {};
 }
-properties.probeCalibrationMethod = "Renishaw"; // determines which calibration parameters are used
-propertyDefinitions.probeCalibrationMethod = {
-  title: "Probe calibration Method",
-  description: "Select the probe calibration method",
-  type: "enum",
-  values: [
-    {id: "Renishaw", title: "Renishaw"},
-    {id: "Autodesk", title: "Autodesk"},
-    {id: "Other", title: "Other"}
-  ]
-};
-propertyDefinitions.probeLocalVar = {title: "Local variable start", description: "Specify the starting value for macro # variables that are to be used for calculations during inspection paths", group: 0, type: "integer"};
+//properties.probeCalibrationMethod = "Renishaw"; // determines which calibration parameters are used
+//propertyDefinitions.probeCalibrationMethod = {
+//   title: "Probe calibration Method",
+//   description: "Select the probe calibration method",
+//   type: "enum",
+//   values: [
+//     {id: "Renishaw", title: "Renishaw"},
+//     {id: "Autodesk", title: "Autodesk"},
+//     {id: "Other", title: "Other"}
+//   ]
+// };
+//propertyDefinitions.probeLocalVar = {title: "Local variable start", description: "Specify the starting value for macro # variables that are to be used for calculations during inspection paths", group: 0, type: "integer"};
 propertyDefinitions.singleResultsFile = {title: "Create Single Results File", description: "Set to false if you want to store the measurement results for each inspection toolpath in a seperate file", group: 0, type: "boolean"};
 propertyDefinitions.useDirectConnection = {title: "Stream Measured Point Data", description: "Set to true to stream inspection results", group: 0, type: "boolean"};
-propertyDefinitions.probeResultsBuffer = {title: "Measurement results store start", description: "Specify the starting value of macro # variables where measurement results are stored", group: 0, type: "integer"};
-propertyDefinitions.probeNumberofPoints = {title: "Measurement number of points to store", description: "This is the maximum number of measurement results that can be stored in the buffer", group: 0, type: "integer"};
 propertyDefinitions.controlConnectorVersion = {title: "Results connector version", description: "Interface version for direct connection to read inspection results", group: 0, type: "integer"};
 propertyDefinitions.toolOffsetType = {
   title: "Tool offset type",
@@ -2488,21 +2496,6 @@ propertyDefinitions.toolOffsetType = {
   ]
 };
 propertyDefinitions.commissioningMode = {title: "Inspection Commissioning Mode", description: "Enables commissioning mode where M0 and messages are output at key points in the program", group: 0, type: "boolean"};
-propertyDefinitions.probeOnCommand = {title: "Probe On Command", description: "The command used to turn the probe on, this can be a M code or sub program call", group: 0, type: "string"};
-propertyDefinitions.probeOffCommand = {title: "Probe Off Command", description: "The command used to turn the probe off, this can be a M code or sub program call", group: 0, type: "string"};
-propertyDefinitions.probeCalibratedRadius = {title: "Calibrated Radius", description: "Macro Variable used for storing probe calibrated radi", group: 0, type: "integer"};
-propertyDefinitions.probeEccentricityX = {title: "Eccentricity X", description: "Macro Variable used for storing the X eccentricity", group: 0, type: "integer"};
-propertyDefinitions.probeEccentricityY = {title: "Eccentricity Y", description: "Macro Variable used for storing the Y eccentricity", group: 0, type: "integer"};
-propertyDefinitions.calibrationNCOutput = {
-  title: "Calibration NC Output Type",
-  description: "Choose none if the NC program created is to be used for calibrating the probe",
-  group: 0,
-  type: "enum",
-  values: [
-    {id: "none", title: "none"},
-    {id: "Ring Gauge", title: "Ring Gauge"},
-  ]
-};
 propertyDefinitions.stopOnInspectionEnd = {title: "Stop on Inspection End", description: "Set to ON to output M0 at the end of each inspection toolpath", group: 0, type: "boolean"};
 
 var ijkInspectionFormat = createFormat({decimals:5, forceDecimal:true});
@@ -2510,12 +2503,8 @@ var ijkInspectionFormat = createFormat({decimals:5, forceDecimal:true});
 var inspectionVariables = {
   localVariablePrefix: "#",
   probeRadius: 0,
-  systemVariableMeasuredX: 5061,
-  systemVariableMeasuredY: 5062,
-  systemVariableMeasuredZ: 5063,
   pointNumber: 1,
-  probeResultsBufferFull: false,
-  probeResultsBufferIndex: 1,
+ 
   inspectionSections: 0,
   inspectionSectionCount: 0,
   systemVariableOffsetLengthTable: 2200,
@@ -2553,19 +2542,12 @@ function inspectionWriteVariables() {
         inspectionVariables.macroVariable2 = prefix + ++count;
         inspectionVariables.macroVariable3 = prefix + ++count;
         inspectionVariables.macroVariable4 = prefix + ++count;
-        if (properties.calibrationNCOutput == "Ring Gauge") {
-          inspectionVariables.measuredXStartingAddress = localVar;
-          inspectionVariables.measuredYStartingAddress = localVar + 10;
-          inspectionVariables.measuredZStartingAddress = localVar + 20;
-          inspectionVariables.measuredIStartingAddress = localVar + 30;
-          inspectionVariables.measuredJStartingAddress = localVar + 40;
-          inspectionVariables.measuredKStartingAddress = localVar + 50;
-        }
+      
         inspectionValidateInspectionSettings();
-        inspectionVariables.probeResultsReadPointer = prefix + (properties.probeResultsBuffer + 2);
-        inspectionVariables.probeResultsWritePointer = prefix + (properties.probeResultsBuffer + 3);
-        inspectionVariables.probeResultsCollectionActive = prefix + (properties.probeResultsBuffer + 4);
-        inspectionVariables.probeResultsStartAddress = properties.probeResultsBuffer + 5;
+        // //inspectionVariables.probeResultsReadPointer = prefix + (properties.probeResultsBuffer + 2);
+        // inspectionVariables.probeResultsWritePointer = prefix + (properties.probeResultsBuffer + 3);
+        // inspectionVariables.probeResultsCollectionActive = prefix + (properties.probeResultsBuffer + 4);
+        // inspectionVariables.probeResultsStartAddress = properties.probeResultsBuffer + 5;
         if (properties.toolOffsetType == "geomOnly") {
           inspectionVariables.systemVariableOffsetLengthTable = "2000";
         }
@@ -2600,93 +2582,87 @@ function inspectionWriteVariables() {
   }
 }
 
+// adds the necessary references for inspection to the program header
+function addInspectionReferences() {
+  var hasInspectionOperation = false;
+  var numberOfSections = getNumberOfSections();
+  for (var i = 0; i < numberOfSections; ++i) {
+    var section = getSection(i);
+    if (isInspectionOperation(section)) {
+      hasInspectionOperation = true;
+      break;
+    }
+  }
+
+  if (hasInspectionOperation) {
+    SimPLProgram.usingList.push("using File, LinearAlgebra, LinearAlgebraHelper, MeasuringCyclesExecutor, XyzSensor, String");
+    SimPLProgram.usingList.push("import AxisSystem");
+  }
+}
+
 function inspectionValidateInspectionSettings() {
   var errorText = "";
-  if (properties.probeOnCommand == "") {
-    errorText += "\n-Probe On Command-";
-  }
-  if (properties.probeOffCommand == "") {
-    errorText += "\n-Probe Off Command-";
-  }
-  if (properties.probeCalibratedRadius == 0) {
-    errorText += "\n-Calibrated Radius-";
-  }
-  if (properties.probeEccentricityX == 0) {
-    errorText += "\n-Eccentricity X-";
-  }
-  if (properties.probeEccentricityY == 0) {
-    errorText += "\n-Eccentricity Y-";
-  }
   if (errorText != "") {
     error(localize("The following properties need to be configured:" + errorText + "\n-Please visit https://forums.autodesk.com/t5/hsm-post-processor-forum/bd-p/218 for more information-"));
   }
 }
 
 function onProbe(status) {
-  if (status) { // probe ON
-    if (properties.commissioningMode) {
-      var outputType = properties.calibrationOutputType == "Ring Gauge" ? "S#1" : "";
-      writeBlock(mFormat.format(19), outputType);
-    }
-    // writeBlock(mFormat.format(184)); // Doosan Allow G01 or G31 move without spindle speed active (M185 to activate)
-    writeBlock(properties.probeOnCommand); // Command for switching the probe on
-    onDwell(2);
-    if (properties.commissioningMode) {
-      writeBlock("#3006=1(Ensure Probe Is Active)");
-    }
+  if (status) {// probeON
+    writeBlock("PrepareXyzSensor"); // Command for switching the probe on
   } else { // probe OFF
-    writeBlock(properties.probeOffCommand); // Command for switching the probe off
-    onDwell(2);
-    if (properties.commissioningMode) {
-      writeBlock("#3006=1(Ensure Probe Has Deactivated)");
-    }
+    writeBlock("UnprepareXyzSensor"); // Command for switching the probe off
   }
+}
+
+// convert the hsm vector to the datron simpl position initilizer.
+function vectorToDatronPosString(vec) {
+  return "NewPos(" + xyzFormat.format(vec.x) + ", " + xyzFormat.format(vec.y) + ", " + xyzFormat.format(vec.z) + ")";
 }
 
 function inspectionCycleInspect(cycle, epx, epy, epz) {
   if (getNumberOfCyclePoints() != 3) {
     error(localize("Missing Endpoint in Inspection Cycle, check Approach and Retract heights"));
   }
-  var x = xyzFormat.format(epx);
-  var y = xyzFormat.format(epy);
-  var z = xyzFormat.format(epz);
+  
+  if (!isLastCyclePoint()) {
+    return;
+  }
+
   forceFeed(); // ensure feed is always output - just incase.
   if (currentSection.isMultiAxis()) {
-    writeBlock(inspectionVariables.macroVariable1 + "=PRM[5400,5]");
-    writeBlock("IF [" + inspectionVariables.macroVariable1 + " NE 1] THEN #3000 = 1 " +
-      "(MACHINE PARAMETER 5400 BIT 5 NEEDS to BE 1 FOR MULTI-AXIS)"
-    );
+    error("MultiAxisNot Supportetd");
   }
   var f;
-  if (isFirstCyclePoint() || isLastCyclePoint()) {
-    f = isFirstCyclePoint() ? cycle.safeFeed : cycle.linkFeed;
-    inspectionCalculateTargetEndpoint(x, y, z);
-    if (isFirstCyclePoint()) {
-      writeComment("Approach Move");
-      inspectionWriteCycleMove(f, MEASURE_COMMAND);
-      inspectionProbeTriggerCheck(false); // not triggered
-    } else {
-      writeComment("Retract Move");
-      inspectionWriteCycleMove(f, LINEAR_COMMAND);
-      forceXYZ();
-    }
-  } else {
-    f = cycle.measureFeed;
-    // var f = 300;
-    inspectionWriteNominalData(cycle);
-    if (properties.useDirectConnection) {
-      inspectionWriteFusionConnectorInterface("MEASURE");
-    }
-    inspectionCalculateTargetEndpoint(x, y, z);
-    writeComment("Measure Move");
-    if (properties.commissioningMode && inspectionVariables.pointNumber == 1) {
-      writeBlock("#3006=1(Probe is about to contact part. Axes should stop on contact)");
-    }
-    inspectionWriteCycleMove(f, MEASURE_COMMAND);
-    inspectionProbeTriggerCheck(true); // triggered
-    inspectionCorrectProbeMeasurement();
-    inspectionWriteMeasuredData();
-  }
+
+  var m = getRotation();
+  var v = new Vector(cycle.nominalX, cycle.nominalY, cycle.nominalZ);
+  var targetPoint = m.multiply(v);
+  var pathVector = new Vector(cycle.nominalI, cycle.nominalJ, cycle.nominalK);
+  var measureDirection = m.multiply(pathVector).normalized.getNegated();
+  var searchDistance = cycle.probeClearance;
+  
+  writeBlock(
+    "measureResult = GetMeasuringResultCompensation(\n\t\tArrangeMeasuring(\n\t\t\ttargetPosition=" +
+    vectorToDatronPosString(targetPoint) +
+    "\n\t\t\tdirection=" +
+    vectorToDatronPosString(measureDirection) +
+    "\n\t\t\tdistance=" +
+    xyzFormat.format(searchDistance) +
+    ")," +
+    "\n\t\tAxisSystem::GetRcsMatrix)"
+  );
+  // f = cycle.measureFeed;
+  // // var f = 300;
+  inspectionWriteNominalData(cycle);
+  // if (properties.useDirectConnection) {
+  //   inspectionWriteFusionConnectorInterface("MEASURE");
+  // }
+  
+  // inspectionProbeTriggerCheck(true); // triggered
+
+  inspectionWriteMeasuredData();
+  
 }
 
 function inspectionWriteNominalData(cycle) {
@@ -2701,75 +2677,34 @@ function inspectionWriteNominalData(cycle) {
   cycle.nominalI = nv.x;
   cycle.nominalJ = nv.y;
   cycle.nominalK = nv.z;
-  writeBlock("DPRNT[G800" +
-    "*N" + inspectionVariables.pointNumber +
-    "*X" + xyzFormat.format(cycle.nominalX) +
-    "*Y" + xyzFormat.format(cycle.nominalY) +
-    "*Z" + xyzFormat.format(cycle.nominalZ) +
-    "*I" + ijkInspectionFormat.format(cycle.nominalI) +
-    "*J" + ijkInspectionFormat.format(cycle.nominalJ) +
-    "*K" + ijkInspectionFormat.format(cycle.nominalK) +
-    "*O" + xyzFormat.format(getParameter("operation:inspectSurfaceOffset")) +
-    "*U" + xyzFormat.format(getParameter("operation:inspectUpperTolerance")) +
-    "*L" + xyzFormat.format(getParameter("operation:inspectLowerTolerance")) +
-    "]"
-  );
-}
-
-function inspectionCalculateTargetEndpoint(x, y, z) {
-  writeComment("CALCULATE TARGET ENDPOINT");
-  writeBlock(inspectionVariables.xTarget + "=" + x + "-" + macroFormat.format(properties.probeEccentricityX));
-  writeBlock(inspectionVariables.yTarget + "=" + y + "-" + macroFormat.format(properties.probeEccentricityY));
-  writeBlock(inspectionVariables.zTarget + "=" + z + "+[" +  xyzFormat.format(tool.diameter / 2) + "-" + inspectionVariables.probeRadius + "]");
-}
-
-function inspectionWriteMeasureMove(f) {
-  writeBlock(gFormat.format(31),
-    "X" + inspectionVariables.xTarget,
-    "Y" + inspectionVariables.yTarget,
-    "Z" + inspectionVariables.zTarget,
-    feedOutput.format(f)
-  );
-}
-function inspectionWriteCycleMove(feedRate, moveType) {
-  writeBlock(gFormat.format(moveType),
-    "X" + inspectionVariables.xTarget,
-    "Y" + inspectionVariables.yTarget,
-    "Z" + inspectionVariables.zTarget,
-    feedOutput.format(feedRate)
+  writeBlock("FileWriteLine filename=filename value=\"G800" +
+    " N" + cycle.pointID +
+    " X" + xyzFormat.format(cycle.nominalX) +
+    " Y" + xyzFormat.format(cycle.nominalY) +
+    " Z" + xyzFormat.format(cycle.nominalZ) +
+    " I" + ijkInspectionFormat.format(cycle.nominalI) +
+    " J" + ijkInspectionFormat.format(cycle.nominalJ) +
+    " K" + ijkInspectionFormat.format(cycle.nominalK) +
+    " O" + xyzFormat.format(getParameter("operation:inspectSurfaceOffset")) +
+    " U" + xyzFormat.format(getParameter("operation:inspectUpperTolerance")) +
+    " L" + xyzFormat.format(getParameter("operation:inspectLowerTolerance")) +
+    "\""
   );
 }
 
 function inspectionProbeTriggerCheck(triggered) {
-  var condition = triggered ?  " LT " : " GT ";
-  var message = triggered ? "(NO POINT TAKEN)" : "(PATH OBSTRUCTED)";
-  var inPositionTolerance = (unit == MM) ? 0.01 : 0.0004;
-  writeBlock(inspectionVariables.macroVariable1 + "=" + inspectionVariables.xTarget + "-" + macroFormat.format(inspectionVariables.systemVariableMeasuredX));
-  writeBlock(inspectionVariables.macroVariable2 + "=" + inspectionVariables.yTarget + "-" + macroFormat.format(inspectionVariables.systemVariableMeasuredY));
-  writeBlock(inspectionVariables.macroVariable3 + "=" + inspectionVariables.zTarget + "-" + macroFormat.format(inspectionVariables.systemVariableMeasuredZ) + "+" + inspectionVariables.activeToolLength);
-  writeBlock(inspectionVariables.macroVariable4 + "=" +
-    "[" + inspectionVariables.macroVariable1 + "*" + inspectionVariables.macroVariable1 + "]" + "+"  +
-    "[" + inspectionVariables.macroVariable2 + "*" + inspectionVariables.macroVariable2 + "]" + "+"  +
-    "[" + inspectionVariables.macroVariable3 + "*" + inspectionVariables.macroVariable3 + "]"
-  );
-  writeBlock("IF [" + inspectionVariables.macroVariable4 + condition + inPositionTolerance + "] THEN #3000 = 1 (" + message + ")");
-}
-
-function inspectionCorrectProbeMeasurement() {
-  writeComment("Correct Measurements");
-  writeBlock(
-    inspectionVariables.xMeasured + "=" + macroFormat.format(inspectionVariables.systemVariableMeasuredX) + "+" + macroFormat.format(properties.probeEccentricityX)
-  );
-  writeBlock(
-    inspectionVariables.yMeasured + "=" + macroFormat.format(inspectionVariables.systemVariableMeasuredY) + "+" + macroFormat.format(properties.probeEccentricityY)
-  );
-  // need to consider probe centre tool output point in future too
-  writeBlock(
-    inspectionVariables.zMeasured + "=" +
-    macroFormat.format(inspectionVariables.systemVariableMeasuredZ) + "-" +
-    inspectionVariables.activeToolLength + "+" +
-    inspectionVariables.probeRadius
-  );
+  // var condition = triggered ?  " LT " : " GT ";
+  // var message = triggered ? "(NO POINT TAKEN)" : "(PATH OBSTRUCTED)";
+  // var inPositionTolerance = (unit == MM) ? 0.01 : 0.0004;
+  // writeBlock(inspectionVariables.macroVariable1 + "=" + inspectionVariables.xTarget + "-" + macroFormat.format(inspectionVariables.systemVariableMeasuredX));
+  // writeBlock(inspectionVariables.macroVariable2 + "=" + inspectionVariables.yTarget + "-" + macroFormat.format(inspectionVariables.systemVariableMeasuredY));
+  // writeBlock(inspectionVariables.macroVariable3 + "=" + inspectionVariables.zTarget + "-" + macroFormat.format(inspectionVariables.systemVariableMeasuredZ) + "+" + inspectionVariables.activeToolLength);
+  // writeBlock(inspectionVariables.macroVariable4 + "=" +
+  //   "[" + inspectionVariables.macroVariable1 + "*" + inspectionVariables.macroVariable1 + "]" + "+"  +
+  //   "[" + inspectionVariables.macroVariable2 + "*" + inspectionVariables.macroVariable2 + "]" + "+"  +
+  //   "[" + inspectionVariables.macroVariable3 + "*" + inspectionVariables.macroVariable3 + "]"
+  // );
+  // writeBlock("IF [" + inspectionVariables.macroVariable4 + condition + inPositionTolerance + "] THEN #3000 = 1 (" + message + ")");
 }
 
 function inspectionWriteFusionConnectorInterface(ncSection) {
@@ -2792,44 +2727,47 @@ function inspectionWriteFusionConnectorInterface(ncSection) {
 
 function inspectionWriteMeasuredData() {
   var outputFormat =  (unit == MM) ? "[53]" : "[44]";
-  writeBlock("DPRNT[G801" +
-    "*N" + inspectionVariables.pointNumber +
-    "*X" + inspectionVariables.xMeasured + outputFormat +
-    "*Y" + inspectionVariables.yMeasured + outputFormat +
-    "*Z" + inspectionVariables.zMeasured + outputFormat +
-    "*R" + inspectionVariables.probeRadius + outputFormat +
-    "]"
-  );
-  if (properties.useDirectConnection) {
-    var writeResultIndexX = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex);
-    var writeResultIndexY = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex) + 1;
-    var writeResultIndexZ = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex) + 2;
 
-    writeBlock(macroFormat.format(writeResultIndexX) + " = " + inspectionVariables.xMeasured);
-    writeBlock(macroFormat.format(writeResultIndexY) + " = " + inspectionVariables.yMeasured);
-    writeBlock(macroFormat.format(writeResultIndexZ) + " = " + inspectionVariables.zMeasured);
-    inspectionVariables.probeResultsBufferIndex += 1;
-    if (inspectionVariables.probeResultsBufferIndex > properties.probeNumberofPoints) {
-      inspectionVariables.probeResultsBufferIndex = 0;
-    }
-    writeBlock(inspectionVariables.probeResultsWritePointer + " = " + inspectionVariables.probeResultsBufferIndex);
-  }
+  writeBlock("message = StringFormat(");
+  writeBlock("\tbaseString=\"G801 N{0} X{1:f3} Y{2:f3} Z{3:f3} R{4:f3}\"");
+  writeBlock("\t\tp0=" + cycle.pointID);
+  writeBlock("\t\tp1=measureResult.measuredPoint.X");
+  writeBlock("\t\tp2=measureResult.measuredPoint.Y");
+  writeBlock("\t\tp3=measureResult.measuredPoint.Z");
+  writeBlock("\t\tp4=GetProbeTipRadius())");
 
-  if (properties.commissioningMode && (properties.calibrationOutputType == "Ring Gauge")) {
-    writeBlock(macroFormat.format(inspectionVariables.measuredXStartingAddress + inspectionVariables.pointNumber) +
-    "=" + inspectionVariables.xMeasured);
-    writeBlock(macroFormat.format(inspectionVariables.measuredYStartingAddress + inspectionVariables.pointNumber) +
-    "=" + inspectionVariables.yMeasured);
-    writeBlock(macroFormat.format(inspectionVariables.measuredZStartingAddress + inspectionVariables.pointNumber) +
-    "=" + inspectionVariables.zMeasured);
-    writeBlock(macroFormat.format(inspectionVariables.measuredIStartingAddress + inspectionVariables.pointNumber) +
-    "=" + xyzFormat.format(cycle.nominalI));
-    writeBlock(macroFormat.format(inspectionVariables.measuredJStartingAddress + inspectionVariables.pointNumber) +
-    "=" + xyzFormat.format(cycle.nominalJ));
-    writeBlock(macroFormat.format(inspectionVariables.measuredKStartingAddress + inspectionVariables.pointNumber) +
-    "=" + xyzFormat.format(cycle.nominalK));
-  }
-  inspectionVariables.pointNumber += 1;
+  writeBlock("FileWriteLine filename=filename value=StringReplace(message, \",\", \".\")");
+
+  // if (properties.useDirectConnection) {
+  //   var writeResultIndexX = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex);
+  //   var writeResultIndexY = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex) + 1;
+  //   var writeResultIndexZ = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex) + 2;
+
+  //   writeBlock(macroFormat.format(writeResultIndexX) + " = " + inspectionVariables.xMeasured);
+  //   writeBlock(macroFormat.format(writeResultIndexY) + " = " + inspectionVariables.yMeasured);
+  //   writeBlock(macroFormat.format(writeResultIndexZ) + " = " + inspectionVariables.zMeasured);
+  //   inspectionVariables.probeResultsBufferIndex += 1;
+  //   if (inspectionVariables.probeResultsBufferIndex > properties.probeNumberofPoints) {
+  //     inspectionVariables.probeResultsBufferIndex = 0;
+  //   }
+  //   writeBlock(inspectionVariables.probeResultsWritePointer + " = " + inspectionVariables.probeResultsBufferIndex);
+  // }
+
+  // if (properties.commissioningMode && (properties.calibrationOutputType == "Ring Gauge")) {
+  //   writeBlock(macroFormat.format(inspectionVariables.measuredXStartingAddress + inspectionVariables.pointNumber) +
+  //   "=" + inspectionVariables.xMeasured);
+  //   writeBlock(macroFormat.format(inspectionVariables.measuredYStartingAddress + inspectionVariables.pointNumber) +
+  //   "=" + inspectionVariables.yMeasured);
+  //   writeBlock(macroFormat.format(inspectionVariables.measuredZStartingAddress + inspectionVariables.pointNumber) +
+  //   "=" + inspectionVariables.zMeasured);
+  //   writeBlock(macroFormat.format(inspectionVariables.measuredIStartingAddress + inspectionVariables.pointNumber) +
+  //   "=" + xyzFormat.format(cycle.nominalI));
+  //   writeBlock(macroFormat.format(inspectionVariables.measuredJStartingAddress + inspectionVariables.pointNumber) +
+  //   "=" + xyzFormat.format(cycle.nominalJ));
+  //   writeBlock(macroFormat.format(inspectionVariables.measuredKStartingAddress + inspectionVariables.pointNumber) +
+  //   "=" + xyzFormat.format(cycle.nominalK));
+  // }
+  // inspectionVariables.pointNumber += 1;
 }
 
 function inspectionProcessSectionStart() {
@@ -2839,60 +2777,38 @@ function inspectionProcessSectionStart() {
   }
   inspectionVariables.inspectionSectionCount += 1;
   // write the toolpath name as a comment
-  writeBlock("DPRNT[TOOLPATH*" + getParameter("operation-comment") + "]");
+  writeBlock("FileWriteLine filename=filename value=\";TOOLPATH " + getParameter("operation-comment") + "\"");
   inspectionWriteWorkplaneTransform();
   if (properties.toolOffsetType == "geomOnly") {
     writeComment("Geometry Only");
-    writeBlock(
-      inspectionVariables.activeToolLength + "=" +
-      inspectionVariables.localVariablePrefix + "[" +
-      inspectionVariables.systemVariableOffsetLengthTable +  " + " +
-      macroFormat.format(4111) +
-      "]"
-    );
+    // writeBlock(
+    //   inspectionVariables.activeToolLength + "=" +
+    //   inspectionVariables.localVariablePrefix + "[" +
+    //   inspectionVariables.systemVariableOffsetLengthTable +  " + " +
+    //   macroFormat.format(4111) +
+    //   "]"
+    // );
   } else {
     writeComment("Geometry and Wear");
-    writeBlock(
-      inspectionVariables.activeToolLength + "=" +
-      inspectionVariables.localVariablePrefix + "[" +
-      inspectionVariables.systemVariableOffsetLengthTable + " + " +
-      macroFormat.format(4111) +
-      "] + " +
-      inspectionVariables.localVariablePrefix + "[" +
-      inspectionVariables.systemVariableOffsetWearTable +  " + " +
-      macroFormat.format(4111) +
-      "]"
-    );
+    // writeBlock(
+    //   inspectionVariables.activeToolLength + "=" +
+    //   inspectionVariables.localVariablePrefix + "[" +
+    //   inspectionVariables.systemVariableOffsetLengthTable + " + " +
+    //   macroFormat.format(4111) +
+    //   "] + " +
+    //   inspectionVariables.localVariablePrefix + "[" +
+    //   inspectionVariables.systemVariableOffsetWearTable +  " + " +
+    //   macroFormat.format(4111) +
+    //   "]"
+    // );
   }
-  if (properties.probeCalibrationMethod == "Renishaw") {
-    writeBlock(inspectionVariables.probeRadius + "=[[" +
-      macroFormat.format(properties.probeCalibratedRadius) + " + " +
-      macroFormat.format(properties.probeCalibratedRadius + 1) + "]" + "/2]"
-    );
-  } else {
-    writeBlock(inspectionVariables.probeRadius + "=" + macroFormat.format(properties.probeCalibratedRadius));
-  }
-  if (properties.commissioningMode) {
-    var outputFormat =  (unit == MM) ? "[53]" : "[44]";
-    writeBlock("DPRNT[CALIBRATED*RADIUS*" + inspectionVariables.probeRadius + outputFormat + "]");
-    writeBlock("DPRNT[ECCENTRICITY*X****" + macroFormat.format(properties.probeEccentricityX) + outputFormat + "]");
-    writeBlock("DPRNT[ECCENTRICITY*Y****" + macroFormat.format(properties.probeEccentricityY) + outputFormat + "]");
-    writeBlock("IF [" + inspectionVariables.probeRadius + " EQ #0] THEN #3000 = 1(PROBE NOT CALIBRATED OR PROPERTY CALIBRATED RADIUS INCORRECT)");
-    writeBlock("IF [" + inspectionVariables.probeRadius + " EQ 0] THEN #3000 = 1(PROBE NOT CALIBRATED OR PROPERTY CALIBRATED RADIUS INCORRECT)");
-    writeBlock("IF [" + inspectionVariables.probeRadius + " GT " + xyzFormat.format(tool.diameter / 2) + "] THEN #3000 = 1(PROBE NOT CALIBRATED OR PROPERTY CALIBRATED RADIUS INCORRECT)");
-    var maxEccentricity = (unit == MM) ? 0.2 : 0.0079;
-    writeBlock("IF [ABS[" + macroFormat.format(properties.probeEccentricityX) + "] GT " + maxEccentricity + "] THEN #3000 = 1(PROBE NOT CALIBRATED OR PROPERTY ECCENTRICITY X INCORRECT)");
-    writeBlock("IF [ABS[" + macroFormat.format(properties.probeEccentricityY) + "] GT " + maxEccentricity + "] THEN #3000 = 1(PROBE NOT CALIBRATED OR PROPERTY ECCENTRICITY Y INCORRECT)");
-    writeBlock("IF [" + macroFormat.format(properties.probeEccentricityX) + " EQ #0] THEN #3000 = 1(PROBE NOT CALIBRATED OR PROPERTY ECCENTRICITY X INCORRECT)");
-    writeBlock("IF [" + macroFormat.format(properties.probeEccentricityY) + " EQ #0] THEN #3000 = 1(PROBE NOT CALIBRATED OR PROPERTY ECCENTRICITY Y INCORRECT)");
-  }
-  writeBlock(inspectionVariables.macroVariable1 + "=PRM[6014,4]");
-  writeBlock("IF [" + inspectionVariables.macroVariable1 + " NE 0] THEN " + inspectionVariables.activeToolLength + " = 0");
+  //writeBlock(inspectionVariables.probeRadius + "=" + macroFormat.format(properties.probeCalibratedRadius));
+  //writeBlock(inspectionVariables.macroVariable1 + "=PRM[6014,4]");
+  //writeBlock("IF [" + inspectionVariables.macroVariable1 + " NE 0] THEN " + inspectionVariables.activeToolLength + " = 0");
 }
 
 function inspectionCreateResultsFileHeader() {
-  writeBlock("PCLOS");
-  writeBlock("POPEN");
+  
   // check for existence of none alphanumeric characters but not spaces
   var resFile;
   if (properties.singleResultsFile) {
@@ -2903,18 +2819,24 @@ function inspectionCreateResultsFileHeader() {
   // replace spaces with underscore as controllers don't like spaces in filenames
   resFile = resFile.replace(/\s/g, "_");
   resFile = resFile.replace(/[^a-zA-Z0-9_]/g, "");
-  writeBlock("DPRNT[RESULTSFILE*" + resFile + "]");
+  writeBlock("filename = \"" + resFile + ".MSR\"");
+  writeComment("delete existing old file");
+  writeBlock("if FileExists filename=filename");
+  writeBlock("\tFileDelete filename=filename");
+  writeBlock("endif");
+
+  writeBlock("");
   if (inspectionVariables.inspectionSectionCount == 0 || !properties.singleResultsFile) {
-    writeBlock("DPRNT[START]");
+    writeBlock("FileWriteLine filename=filename value=\"START\"");
     if (hasGlobalParameter("document-id")) {
-      writeBlock("DPRNT[DOCUMENTID*" + getGlobalParameter("document-id") + "]");
+      writeBlock("FileWriteLine filename=filename value=\"DOCUMENTID " + getGlobalParameter("document-id") + "\"");
     }
     if (hasGlobalParameter("model-version")) {
-      writeBlock("DPRNT[MODELVERSION*" + getGlobalParameter("model-version") + "]");
+      writeBlock("FileWriteLine filename=filename value=\"MODELVERSION " + getGlobalParameter("model-version") + "\"");
     }
   }
   // write the toolpath id in the results file
-  writeBlock("DPRNT[TOOLPATHID*" + getParameter("autodeskcam:operation-id") + "]");
+  writeBlock("FileWriteLine filename=filename value=\"TOOLPATHID " + getParameter("autodeskcam:operation-id") + "\"");
   inspectionWriteCADTransform();
   inspectionVariables.workpieceOffset = currentSection.workOffset;
 }
@@ -2924,27 +2846,27 @@ function inspectionWriteCADTransform() {
   var cadWorkPlane = currentSection.getModelPlane().getTransposed();
   var cadEuler = cadWorkPlane.getEuler2(EULER_XYZ_S);
   writeBlock(
-    "DPRNT[G331" +
-    "*N" + inspectionVariables.pointNumber +
-    "*A" + abcFormat.format(cadEuler.x) +
-    "*B" + abcFormat.format(cadEuler.y) +
-    "*C" + abcFormat.format(cadEuler.z) +
-    "*X" + xyzFormat.format(-cadOrigin.x) +
-    "*Y" + xyzFormat.format(-cadOrigin.y) +
-    "*Z" + xyzFormat.format(-cadOrigin.z) +
-    "]"
+    "FileWriteLine filename=filename value=\"G331" +
+    " N" + inspectionVariables.pointNumber +
+    " A" + abcFormat.format(cadEuler.x) +
+    " B" + abcFormat.format(cadEuler.y) +
+    " C" + abcFormat.format(cadEuler.z) +
+    " X" + xyzFormat.format(-cadOrigin.x) +
+    " Y" + xyzFormat.format(-cadOrigin.y) +
+    " Z" + xyzFormat.format(-cadOrigin.z) +
+    "\""
   );
 }
 
 function inspectionWriteWorkplaneTransform() {
   var euler = currentSection.workPlane.getEuler2(EULER_XYZ_S);
   var abc = new Vector(euler.x, euler.y, euler.z);
-  writeBlock("DPRNT[G330" +
-    "*N" + inspectionVariables.pointNumber +
-    "*A" + abcFormat.format(abc.x) +
-    "*B" + abcFormat.format(abc.y) +
-    "*C" + abcFormat.format(abc.z) +
-    "*X0*Y0*Z0*I0*R0]"
+  writeBlock("FileWriteLine filename=filename value=\"G330" +
+    " N" + inspectionVariables.pointNumber +
+    " A" + abcFormat.format(abc.x) +
+    " B" + abcFormat.format(abc.y) +
+    " C" + abcFormat.format(abc.z) +
+    " X0 Y0 Z0 I0 R0\""
   );
 }
 
@@ -2952,38 +2874,38 @@ function inspectionProcessSectionEnd() {
   if (isInspectionOperation(currentSection)) {
     // close inspection results file if the NC has inspection toolpaths
     if ((!properties.singleResultsFile) || (inspectionVariables.inspectionSectionCount == inspectionVariables.inspectionSections)) {
-      writeBlock("DPRNT[END]");
-      writeBlock("PCLOS");
-      if (properties.commissioningMode) {
-        writeBlock(inspectionVariables.macroVariable1 + "=PRM[6019,3]");
-        writeBlock("IF [" + inspectionVariables.macroVariable1 + " EQ 0] THEN #3006 = 1 " +
-          "(MRESULTS FILENAME IS PRNTXXXX.DAT)"
-        );
-        writeBlock("IF [" + inspectionVariables.macroVariable1 + " EQ 1] THEN #3006 = 1 " +
-          "(MRESULTS FILENAME IS MCR_PRNT.TXT)"
-        );
-        writeBlock("#1 = PRM [20] + 100");
-        writeBlock("GOTO #1");
-        writeBlock("N100");
-        writeBlock("#3006=1(A Results file has been output to - Serial)");
-        writeBlock("GOTO 120");
-        writeBlock("N104");
-        writeBlock("#3006=1(A Results file has been output to - Memory Card)");
-        writeBlock("GOTO 120");
-        writeBlock("N105");
-        writeBlock("#3006=1(A Results file has been output to - Data Server)");
-        writeBlock("GOTO 120");
-        writeBlock("N109");
-        writeBlock("#3006=1(A Results file has been output to - FTP)");
-        writeBlock("GOTO 120");
-        writeBlock("N115");
-        writeBlock("#3006=1(A Results file has been output to - ethernet)");
-        writeBlock("GOTO 120");
-        writeBlock("N117");
-        writeBlock("#3006=1(A Results file has been output to - USB)");
-        writeBlock("N120");
-      }
+      writeBlock("FileWriteLine filename=filename value=\"END\"");
+      
+      // if (properties.commissioningMode) {
+      //   writeBlock(inspectionVariables.macroVariable1 + "=PRM[6019,3]");
+      //   writeBlock("IF [" + inspectionVariables.macroVariable1 + " EQ 0] THEN #3006 = 1 " +
+      //     "(MRESULTS FILENAME IS PRNTXXXX.DAT)"
+      //   );
+      //   writeBlock("IF [" + inspectionVariables.macroVariable1 + " EQ 1] THEN #3006 = 1 " +
+      //     "(MRESULTS FILENAME IS MCR_PRNT.TXT)"
+      //   );
+      //   writeBlock("#1 = PRM [20] + 100");
+      //   writeBlock("GOTO #1");
+      //   writeBlock("N100");
+      //   writeBlock("#3006=1(A Results file has been output to - Serial)");
+      //   writeBlock("GOTO 120");
+      //   writeBlock("N104");
+      //   writeBlock("#3006=1(A Results file has been output to - Memory Card)");
+      //   writeBlock("GOTO 120");
+      //   writeBlock("N105");
+      //   writeBlock("#3006=1(A Results file has been output to - Data Server)");
+      //   writeBlock("GOTO 120");
+      //   writeBlock("N109");
+      //   writeBlock("#3006=1(A Results file has been output to - FTP)");
+      //   writeBlock("GOTO 120");
+      //   writeBlock("N115");
+      //   writeBlock("#3006=1(A Results file has been output to - ethernet)");
+      //   writeBlock("GOTO 120");
+      //   writeBlock("N117");
+      //   writeBlock("#3006=1(A Results file has been output to - USB)");
+      //   writeBlock("N120");
+      // }
     }
-    writeBlock(properties.stopOnInspectionEnd == true ? "STOP" : "");
+    writeBlock(properties.stopOnInspectionEnd == true ? "Dialog message=\"Finish Inspection\" Yes No caption=\"Inspection\" Info" : "");
   }
 }
