@@ -2383,7 +2383,12 @@ function onClose() {
     writeWaitProgram();
   }
   spacingDepth = 0;
-  
+
+  // check for additional subprograms
+  if (hasProgramInspectionOperations()) {
+    writeInspectionProgram();
+  }
+
   writeBlock(SimPLProgram.moduleName);
   writeBlock("");
   writeBuffer(SimPLProgram.toolDescriptionList);
@@ -2584,20 +2589,22 @@ function inspectionWriteVariables() {
 
 // adds the necessary references for inspection to the program header
 function addInspectionReferences() {
-  var hasInspectionOperation = false;
+  if (hasProgramInspectionOperations()) {
+    SimPLProgram.usingList.push("using File, LinearAlgebra, LinearAlgebraHelper, MeasuringCyclesExecutor, XyzSensor, String");
+    SimPLProgram.usingList.push("import AxisSystem");
+  }
+}
+
+function hasProgramInspectionOperations() {
   var numberOfSections = getNumberOfSections();
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
     if (isInspectionOperation(section)) {
-      hasInspectionOperation = true;
-      break;
+      
+      return true;
     }
   }
-
-  if (hasInspectionOperation) {
-    SimPLProgram.usingList.push("using File, LinearAlgebra, LinearAlgebraHelper, MeasuringCyclesExecutor, XyzSensor, String");
-    SimPLProgram.usingList.push("import AxisSystem");
-  }
+  return false;
 }
 
 function inspectionValidateInspectionSettings() {
@@ -2642,59 +2649,84 @@ function inspectionCycleInspect(cycle, epx, epy, epz) {
   var measureDirection = m.multiply(pathVector).normalized.getNegated();
   var searchDistance = cycle.probeClearance;
   
-  writeBlock(
-    "measureResult = GetMeasuringResultCompensation(\n\t\tArrangeMeasuring(\n\t\t\ttargetPosition=" +
-    vectorToDatronPosString(targetPoint) +
-    "\n\t\t\tdirection=" +
-    vectorToDatronPosString(measureDirection) +
-    "\n\t\t\tdistance=" +
-    xyzFormat.format(searchDistance) +
-    ")," +
-    "\n\t\tAxisSystem::GetRcsMatrix)"
-  );
+  //call inspection subprogram
+  writeBlock("MeasurePoint(");
+  spacingDepth += 1;
+  writeBlock("pointID=" + cycle.pointID);
+  writeBlock("surfacePos=" + vectorToDatronPosString(targetPoint));
+  writeBlock("measureDirection=" + vectorToDatronPosString(measureDirection));
+  writeBlock("searchDistance=" + searchDistance);
+  writeBlock("upper=" + xyzFormat.format(getParameter("operation:inspectUpperTolerance")));
+  writeBlock("lower=" + xyzFormat.format(getParameter("operation:inspectLowerTolerance")) + ")");
+  spacingDepth -= 1;
+  writeBlock("");
   // f = cycle.measureFeed;
   // // var f = 300;
-  inspectionWriteNominalData(cycle);
+  
   // if (properties.useDirectConnection) {
   //   inspectionWriteFusionConnectorInterface("MEASURE");
   // }
   
   // inspectionProbeTriggerCheck(true); // triggered
 
-  inspectionWriteMeasuredData();
+  //inspectionWriteMeasuredData();
   
 }
 
-function inspectionWriteNominalData(cycle) {
-  var m = getRotation();
-  var v = new Vector(cycle.nominalX, cycle.nominalY, cycle.nominalZ);
-  var vt = m.multiply(v);
-  var pathVector = new Vector(cycle.nominalI, cycle.nominalJ, cycle.nominalK);
-  var nv = m.multiply(pathVector).normalized;
-  cycle.nominalX = vt.x;
-  cycle.nominalY = vt.y;
-  cycle.nominalZ = vt.z;
-  cycle.nominalI = nv.x;
-  cycle.nominalJ = nv.y;
-  cycle.nominalK = nv.z;
-  writeBlock("FileWriteLine filename=filename value=\"G800" +
-    " N" + cycle.pointID +
-    " X" + xyzFormat.format(cycle.nominalX) +
-    " Y" + xyzFormat.format(cycle.nominalY) +
-    " Z" + xyzFormat.format(cycle.nominalZ) +
-    " I" + ijkInspectionFormat.format(cycle.nominalI) +
-    " J" + ijkInspectionFormat.format(cycle.nominalJ) +
-    " K" + ijkInspectionFormat.format(cycle.nominalK) +
-    " O" + xyzFormat.format(getParameter("operation:inspectSurfaceOffset")) +
-    " U" + xyzFormat.format(getParameter("operation:inspectUpperTolerance")) +
-    " L" + xyzFormat.format(getParameter("operation:inspectLowerTolerance")) +
-    "\""
-  );
+// create the subprogram that makes the inspection probing  and the output to the result file.
+function writeInspectionProgram() {
+  inspectProgram = new Array();
+
+  inspectProgram.push("program MeasurePoint pointID:number surfacePos:Position measureDirection:Position searchDistance:number upper:number lower:number returns boolean\r\n");
+  inspectProgram.push("  filename= \"" + getInspectionFilename() + "\"\r\n");
+  inspectProgram.push("  \r\n");
+  inspectProgram.push("  # measure\r\n");
+  inspectProgram.push("  measureResult = GetMeasuringResultCompensation(\r\n");
+  inspectProgram.push("      ArrangeMeasuring(\r\n");
+  inspectProgram.push("          targetPosition=surfacePos\r\n");
+  inspectProgram.push("          direction=measureDirection\r\n");
+  inspectProgram.push("          distance=searchDistance),\r\n");
+  inspectProgram.push("      AxisSystem::GetRcsMatrix)\r\n");
+  inspectProgram.push("     \r\n");
+  inspectProgram.push("  # write nominal values\r\n");
+  inspectProgram.push("  measureNominalString = StringFormat(\r\n");
+  inspectProgram.push("      baseString=\"G800 N{0} X{1:f3} Y{2:f3} Z{3:f3} I{4:f3} J{5:f3} K{6:f3} O0 U{7:f3} L{8:f3}\"\r\n");
+  inspectProgram.push("      p0=pointID  \r\n");
+  inspectProgram.push("      p1=surfacePos.X\r\n");
+  inspectProgram.push("      p2=surfacePos.Y\r\n");
+  inspectProgram.push("      p3=surfacePos.Z\r\n");
+  inspectProgram.push("      p4=measureDirection.X * -1\r\n");
+  inspectProgram.push("      p5=measureDirection.Y * -1\r\n");
+  inspectProgram.push("      p6=measureDirection.Z * -1\r\n");
+  inspectProgram.push("      p7=upper\r\n");
+  inspectProgram.push("      p8=lower)  \r\n");
+  inspectProgram.push("  measureNominalString = StringReplace(measureNominalString, \",\", \".\")        \r\n");
+  inspectProgram.push("  FileWriteLine filename=filename value=measureNominalString\r\n");
+  inspectProgram.push("  \r\n");
+  inspectProgram.push("  # write result values\r\n");
+  inspectProgram.push("  measureResultString = StringFormat(\r\n");
+  inspectProgram.push("    baseString=\"G801 N{0} X{1:f3} Y{2:f3} Z{3:f3} R{4:f3}\"\r\n");
+  inspectProgram.push("        p0=pointID\r\n");
+  inspectProgram.push("        p1=measureResult.measuredPoint.X\r\n");
+  inspectProgram.push("        p2=measureResult.measuredPoint.Y\r\n");
+  inspectProgram.push("        p3=measureResult.measuredPoint.Z\r\n");
+  inspectProgram.push("        p4=GetProbeTipRadius())\r\n");
+  inspectProgram.push("  measureResultString = StringReplace(measureResultString, \",\", \".\")\r\n");
+  inspectProgram.push("        \r\n");
+  inspectProgram.push("  FileWriteLine filename=filename value=measureResultString\r\n");
+  inspectProgram.push("  \r\n");
+  inspectProgram.push("  return true\r\n");
+  inspectProgram.push("endprogram\r\n");
+
+  inspectProgramOperation = {operationProgram: inspectProgram};
+
+  SimPLProgram.operationList.push(inspectProgramOperation);
+ 
 }
 
 function inspectionProbeTriggerCheck(triggered) {
-  // var condition = triggered ?  " LT " : " GT ";
-  // var message = triggered ? "(NO POINT TAKEN)" : "(PATH OBSTRUCTED)";
+  // var condition = triggered ?  " LT " : " GT\r\n ";
+  // var message = triggered ? "(NO POINT TAKEN)" : "(PATH OBSTRUCTED\r\n)";
   // var inPositionTolerance = (unit == MM) ? 0.01 : 0.0004;
   // writeBlock(inspectionVariables.macroVariable1 + "=" + inspectionVariables.xTarget + "-" + macroFormat.format(inspectionVariables.systemVariableMeasuredX));
   // writeBlock(inspectionVariables.macroVariable2 + "=" + inspectionVariables.yTarget + "-" + macroFormat.format(inspectionVariables.systemVariableMeasuredY));
@@ -2725,50 +2757,50 @@ function inspectionWriteFusionConnectorInterface(ncSection) {
   }
 }
 
-function inspectionWriteMeasuredData() {
-  var outputFormat =  (unit == MM) ? "[53]" : "[44]";
+// function inspectionWriteMeasuredData() {
+//   var outputFormat =  (unit == MM) ? "[53]" : "[44]";
 
-  writeBlock("message = StringFormat(");
-  writeBlock("\tbaseString=\"G801 N{0} X{1:f3} Y{2:f3} Z{3:f3} R{4:f3}\"");
-  writeBlock("\t\tp0=" + cycle.pointID);
-  writeBlock("\t\tp1=measureResult.measuredPoint.X");
-  writeBlock("\t\tp2=measureResult.measuredPoint.Y");
-  writeBlock("\t\tp3=measureResult.measuredPoint.Z");
-  writeBlock("\t\tp4=GetProbeTipRadius())");
+//   writeBlock("message = StringFormat(");
+//   writeBlock("\tbaseString=\"G801 N{0} X{1:f3} Y{2:f3} Z{3:f3} R{4:f3}\"");
+//   writeBlock("\t\tp0=" + cycle.pointID);
+//   writeBlock("\t\tp1=measureResult.measuredPoint.X");
+//   writeBlock("\t\tp2=measureResult.measuredPoint.Y");
+//   writeBlock("\t\tp3=measureResult.measuredPoint.Z");
+//   writeBlock("\t\tp4=GetProbeTipRadius())");
 
-  writeBlock("FileWriteLine filename=filename value=StringReplace(message, \",\", \".\")");
+//   writeBlock("FileWriteLine filename=filename value=StringReplace(message, \",\", \".\")");
 
-  // if (properties.useDirectConnection) {
-  //   var writeResultIndexX = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex);
-  //   var writeResultIndexY = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex) + 1;
-  //   var writeResultIndexZ = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex) + 2;
+//   // if (properties.useDirectConnection) {
+//   //   var writeResultIndexX = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex);
+//   //   var writeResultIndexY = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex) + 1;
+//   //   var writeResultIndexZ = inspectionVariables.probeResultsStartAddress + (3 * inspectionVariables.probeResultsBufferIndex) + 2;
 
-  //   writeBlock(macroFormat.format(writeResultIndexX) + " = " + inspectionVariables.xMeasured);
-  //   writeBlock(macroFormat.format(writeResultIndexY) + " = " + inspectionVariables.yMeasured);
-  //   writeBlock(macroFormat.format(writeResultIndexZ) + " = " + inspectionVariables.zMeasured);
-  //   inspectionVariables.probeResultsBufferIndex += 1;
-  //   if (inspectionVariables.probeResultsBufferIndex > properties.probeNumberofPoints) {
-  //     inspectionVariables.probeResultsBufferIndex = 0;
-  //   }
-  //   writeBlock(inspectionVariables.probeResultsWritePointer + " = " + inspectionVariables.probeResultsBufferIndex);
-  // }
+//   //   writeBlock(macroFormat.format(writeResultIndexX) + " = " + inspectionVariables.xMeasured);
+//   //   writeBlock(macroFormat.format(writeResultIndexY) + " = " + inspectionVariables.yMeasured);
+//   //   writeBlock(macroFormat.format(writeResultIndexZ) + " = " + inspectionVariables.zMeasured);
+//   //   inspectionVariables.probeResultsBufferIndex += 1;
+//   //   if (inspectionVariables.probeResultsBufferIndex > properties.probeNumberofPoints) {
+//   //     inspectionVariables.probeResultsBufferIndex = 0;
+//   //   }
+//   //   writeBlock(inspectionVariables.probeResultsWritePointer + " = " + inspectionVariables.probeResultsBufferIndex);
+//   // }
 
-  // if (properties.commissioningMode && (properties.calibrationOutputType == "Ring Gauge")) {
-  //   writeBlock(macroFormat.format(inspectionVariables.measuredXStartingAddress + inspectionVariables.pointNumber) +
-  //   "=" + inspectionVariables.xMeasured);
-  //   writeBlock(macroFormat.format(inspectionVariables.measuredYStartingAddress + inspectionVariables.pointNumber) +
-  //   "=" + inspectionVariables.yMeasured);
-  //   writeBlock(macroFormat.format(inspectionVariables.measuredZStartingAddress + inspectionVariables.pointNumber) +
-  //   "=" + inspectionVariables.zMeasured);
-  //   writeBlock(macroFormat.format(inspectionVariables.measuredIStartingAddress + inspectionVariables.pointNumber) +
-  //   "=" + xyzFormat.format(cycle.nominalI));
-  //   writeBlock(macroFormat.format(inspectionVariables.measuredJStartingAddress + inspectionVariables.pointNumber) +
-  //   "=" + xyzFormat.format(cycle.nominalJ));
-  //   writeBlock(macroFormat.format(inspectionVariables.measuredKStartingAddress + inspectionVariables.pointNumber) +
-  //   "=" + xyzFormat.format(cycle.nominalK));
-  // }
-  // inspectionVariables.pointNumber += 1;
-}
+//   // if (properties.commissioningMode && (properties.calibrationOutputType == "Ring Gauge")) {
+//   //   writeBlock(macroFormat.format(inspectionVariables.measuredXStartingAddress + inspectionVariables.pointNumber) +
+//   //   "=" + inspectionVariables.xMeasured);
+//   //   writeBlock(macroFormat.format(inspectionVariables.measuredYStartingAddress + inspectionVariables.pointNumber) +
+//   //   "=" + inspectionVariables.yMeasured);
+//   //   writeBlock(macroFormat.format(inspectionVariables.measuredZStartingAddress + inspectionVariables.pointNumber) +
+//   //   "=" + inspectionVariables.zMeasured);
+//   //   writeBlock(macroFormat.format(inspectionVariables.measuredIStartingAddress + inspectionVariables.pointNumber) +
+//   //   "=" + xyzFormat.format(cycle.nominalI));
+//   //   writeBlock(macroFormat.format(inspectionVariables.measuredJStartingAddress + inspectionVariables.pointNumber) +
+//   //   "=" + xyzFormat.format(cycle.nominalJ));
+//   //   writeBlock(macroFormat.format(inspectionVariables.measuredKStartingAddress + inspectionVariables.pointNumber) +
+//   //   "=" + xyzFormat.format(cycle.nominalK));
+//   // }
+//   // inspectionVariables.pointNumber += 1;
+// }
 
 function inspectionProcessSectionStart() {
   // only write header once if user selects a single results file
@@ -2807,9 +2839,7 @@ function inspectionProcessSectionStart() {
   //writeBlock("IF [" + inspectionVariables.macroVariable1 + " NE 0] THEN " + inspectionVariables.activeToolLength + " = 0");
 }
 
-function inspectionCreateResultsFileHeader() {
-  
-  // check for existence of none alphanumeric characters but not spaces
+function getInspectionFilename() {
   var resFile;
   if (properties.singleResultsFile) {
     resFile = getParameter("job-description") + "_RESULTS";
@@ -2819,7 +2849,15 @@ function inspectionCreateResultsFileHeader() {
   // replace spaces with underscore as controllers don't like spaces in filenames
   resFile = resFile.replace(/\s/g, "_");
   resFile = resFile.replace(/[^a-zA-Z0-9_]/g, "");
-  writeBlock("filename = \"" + resFile + ".MSR\"");
+  resFile += ".MSR";
+  return resFile;
+}
+
+function inspectionCreateResultsFileHeader() {
+  
+  // check for existence of none alphanumeric characters but not spaces
+
+  writeBlock("filename = \"" + getInspectionFilename() +"\"");
   writeComment("delete existing old file");
   writeBlock("if FileExists filename=filename");
   writeBlock("\tFileDelete filename=filename");
