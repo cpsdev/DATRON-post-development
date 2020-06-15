@@ -2460,17 +2460,11 @@ function finishMainProgram() {
 // ######################################################################################################################
 
 // code for inspection support
-//properties.probeLocalVar = 100; // start address of control local variables that are used for calculations
 properties.singleResultsFile = true; // create a single file containing the results for all posted inspection toolpath
 properties.useDirectConnection = false; // determines whether the inspection results are writen to a file or read directly into Fusion
-//properties.probeResultsBuffer = 800; // starting address of the FIFO buffer for the probe contact points
-//properties.probeNumberofPoints = 4; // maximum number of measurement points stored in the results buffer
 properties.controlConnectorVersion = 1; // control connector version
 properties.toolOffsetType = "geomOnly";
 properties.commissioningMode = true; // Enables commissioning mode where M0 and messages are output at key points in the program
-// TAG FIXME
-//properties.probeCalibratedRadius = 0.1; // Parameter used for storing probe calibrated radi
-// TAG
 properties.stopOnInspectionEnd = true; // Output M0 after each inspection section to retrieve results
 if (propertyDefinitions === undefined) {
   propertyDefinitions = {};
@@ -2501,14 +2495,10 @@ var inspectionVariables = {
  
   inspectionSections: 0,
   inspectionSectionCount: 0,
-  systemVariableOffsetLengthTable: 2200,
-  systemVariableOffsetWearTable : 2000,
   workpieceOffset: "",
 };
 
 var macroFormat = createFormat({prefix:inspectionVariables.localVariablePrefix, decimals:0});
-var MEASURE_COMMAND = 31;
-var LINEAR_COMMAND = 1;
 
 // function inspectionWriteVariables() {
 //   // loop through all NC stream sections to check for surface inspection
@@ -2648,7 +2638,7 @@ function inspectionCycleInspect(cycle, epx, epy, epz) {
   writeBlock("upper=" + xyzFormat.format(getParameter("operation:inspectUpperTolerance")));
   writeBlock("lower=" + xyzFormat.format(getParameter("operation:inspectLowerTolerance")) + ")");
   spacingDepth -= 1;
-  writeBlock(""); 
+  writeBlock("");
 }
 
 // create the subprogram that makes the inspection probing  and the output to the result file.
@@ -2721,23 +2711,23 @@ function writeInspectionProgram() {
   SimPLProgram.operationList.push(inspectProgramOperation);
 }
 
-function inspectionWriteFusionConnectorInterface(ncSection) {
-  if (ncSection == "MEASURE") {
-    writeBlock("IF " + inspectionVariables.probeResultsCollectionActive + " NE 1 GOTO " + inspectionVariables.pointNumber);
-    writeBlock("WHILE [" + inspectionVariables.probeResultsReadPointer + " EQ " + inspectionVariables.probeResultsWritePointer + "] DO 1");
-    onDwell(0.5);
-    writeComment("WAITING FOR FUSION CONNECTION");
-    writeBlock("G53");
-    writeBlock("END 1");
-    writeBlock("N" + inspectionVariables.pointNumber);
-  } else {
-    writeBlock("WHILE [" + inspectionVariables.probeResultsCollectionActive + " NE 1] DO 1");
-    onDwell(0.5);
-    writeComment("WAITING FOR FUSION CONNECTION");
-    writeBlock("G53");
-    writeBlock("END 1");
-  }
-}
+// function inspectionWriteFusionConnectorInterface(ncSection) {
+//   if (ncSection == "MEASURE") {
+//     writeBlock("IF " + inspectionVariables.probeResultsCollectionActive + " NE 1 GOTO " + inspectionVariables.pointNumber);
+//     writeBlock("WHILE [" + inspectionVariables.probeResultsReadPointer + " EQ " + inspectionVariables.probeResultsWritePointer + "] DO 1");
+//     onDwell(0.5);
+//     writeComment("WAITING FOR FUSION CONNECTION");
+//     writeBlock("G53");
+//     writeBlock("END 1");
+//     writeBlock("N" + inspectionVariables.pointNumber);
+//   } else {
+//     writeBlock("WHILE [" + inspectionVariables.probeResultsCollectionActive + " NE 1] DO 1");
+//     onDwell(0.5);
+//     writeComment("WAITING FOR FUSION CONNECTION");
+//     writeBlock("G53");
+//     writeBlock("END 1");
+//   }
+// }
 
 function inspectionProcessSectionStart() {
   // only write header once if user selects a single results file
@@ -2754,7 +2744,7 @@ function inspectionProcessSectionStart() {
   } else {
     writeComment("Geometry and Wear");
     // TODO fill
-  } 
+  }
 }
 
 function getInspectionFilename() {
@@ -2829,7 +2819,7 @@ function inspectionProcessSectionEnd() {
     // close inspection results file if the NC has inspection toolpaths
     if ((!properties.singleResultsFile) || (inspectionVariables.inspectionSectionCount == inspectionVariables.inspectionSections)) {
       writeBlock("FileWriteLine filename=InspectionFilename value=\"END\"");
-      // TODO comisioning mode einfügen 
+      // TODO comisioning mode einfügen
     }
     writeBlock(properties.stopOnInspectionEnd == true ? "Dialog message=\"Finish Inspection\" Yes No caption=\"Inspection\" Info" : "");
   }
