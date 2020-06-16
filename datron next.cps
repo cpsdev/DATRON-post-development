@@ -927,7 +927,10 @@ function setWorkPlane(abc) {
   if (!machineConfiguration.isMultiAxisConfiguration()) {
     return; // ignore
   }
-
+  if (isInspectionOperation(currentSection) && !is3D()) {
+    error(localize("Multi axis Inspect surface is not supported."));
+    return;
+  }
   forceWorkPlane(); // always need the new workPlane
   forceABC();
   if ((properties.rotationAxisSetup != "NONE") && properties.useRtcp) {
@@ -1443,6 +1446,10 @@ function onPrePositioning(x, y, z) {
 }
 
 function onLinear(x, y, z, feed) {
+  if (isInspectionOperation(currentSection)) {
+    onExpandedRapid(x, y, z);
+    return;
+  }
   var xyz = "";
   xyz += (x !== null) ? xOutput.format(x) : "";
   xyz += (y !== null) ? yOutput.format(y) : "";
@@ -2452,12 +2459,6 @@ function finishMainProgram() {
 // ######################################################################################################################
 // ######################################################################################################################
 // ######################################################################################################################
-// ######################################################################################################################
-// ######################################################################################################################
-// ######################################################################################################################
-// ######################################################################################################################
-// ######################################################################################################################
-// ######################################################################################################################
 
 // code for inspection support
 properties.singleResultsFile = true; // create a single file containing the results for all posted inspection toolpath
@@ -2635,18 +2636,20 @@ function inspectionCycleInspect(cycle, epx, epy, epz) {
   writeBlock("surfacePos=" + vectorToDatronPosString(targetPoint));
   writeBlock("measureDirection=" + vectorToDatronPosString(measureDirection));
   writeBlock("searchDistance=" + xyzFormat.format(searchDistance));
+  writeBlock("surfaceOffset=" + xyzFormat.format(getParameter("operation:inspectSurfaceOffset")));
   writeBlock("upper=" + xyzFormat.format(getParameter("operation:inspectUpperTolerance")));
   writeBlock("lower=" + xyzFormat.format(getParameter("operation:inspectLowerTolerance")) + ")");
   spacingDepth -= 1;
   writeBlock("");
+  zOutput.reset();
 }
 
 // create the subprogram that makes the inspection probing  and the output to the result file.
 function writeInspectionProgram() {
-  // TODO Fehlercheck  Messung hat nicht stattgefunden
+  // Not triggered is captured by the NEXT Control
   inspectProgram = new Array();
 
-  inspectProgram.push("program MeasurePoint pointID:number surfacePos:Position measureDirection:Position searchDistance:number upper:number lower:number returns boolean\r\n");
+  inspectProgram.push("program MeasurePoint pointID:number surfacePos:Position measureDirection:Position searchDistance:number surfaceOffset:number upper:number lower:number\r\n");
   inspectProgram.push("\t\r\n");
   inspectProgram.push("\t# measure\r\n");
   inspectProgram.push("\tmeasureResult = GetMeasuringResultCompensation(\r\n");
@@ -2656,9 +2659,16 @@ function writeInspectionProgram() {
   inspectProgram.push("\t\t\tdistance=searchDistance),\r\n");
   inspectProgram.push("\t\t AxisSystem::GetRcsMatrix)\r\n");
   inspectProgram.push("\t\t\r\n");
+
+  inspectProgram.push("\t# Trigger not found \r\n");
+  inspectProgram.push("\tif  measureResult.active == false\r\n");
+  inspectProgram.push("\t\tDialog message=\"Target Point not found\" caption=\"Inspection error\" Error\r\n");
+  inspectProgram.push("\tendif\r\n");
+  inspectProgram.push("\r\n");
+  
   inspectProgram.push("\t# write nominal values\r\n");
   inspectProgram.push("\tmeasureNominalString = StringFormat(\r\n");
-  inspectProgram.push("\t\tbaseString=\"G800 N{0} X{1:f3} Y{2:f3} Z{3:f3} I{4:f3} J{5:f3} K{6:f3} O0 U{7:f3} L{8:f3}\"\r\n");
+  inspectProgram.push("\t\tbaseString=\"G800 N{0} X{1:f3} Y{2:f3} Z{3:f3} I{4:f3} J{5:f3} K{6:f3} O{7:f5} U{8:f3} L{9:f3}\"\r\n");
   inspectProgram.push("\t\tp0=pointID  \r\n");
   inspectProgram.push("\t\tp1=surfacePos.X\r\n");
   inspectProgram.push("\t\tp2=surfacePos.Y\r\n");
@@ -2666,11 +2676,13 @@ function writeInspectionProgram() {
   inspectProgram.push("\t\tp4=measureDirection.X * -1\r\n");
   inspectProgram.push("\t\tp5=measureDirection.Y * -1\r\n");
   inspectProgram.push("\t\tp6=measureDirection.Z * -1\r\n");
-  inspectProgram.push("\t\tp7=upper\r\n");
-  inspectProgram.push("\t\tp8=lower)  \r\n");
+  inspectProgram.push("\t\tp7=surfaceOffset\r\n");
+  inspectProgram.push("\t\tp8=upper\r\n");
+  inspectProgram.push("\t\tp9=lower)  \r\n");
   inspectProgram.push("\tmeasureNominalString = StringReplace(measureNominalString, \",\", \".\")        \r\n");
   inspectProgram.push("\tFileWriteLine filename=InspectionFilename value=measureNominalString\r\n");
   inspectProgram.push("\t\r\n");
+
   inspectProgram.push("\t# write result values\r\n");
   inspectProgram.push("\tmeasureResultString = StringFormat(\r\n");
   inspectProgram.push("\t\tbaseString=\"G801 N{0} X{1:f3} Y{2:f3} Z{3:f3} R{4:f3}\"\r\n");
@@ -2700,10 +2712,14 @@ function writeInspectionProgram() {
   inspectProgram.push("\tendif\r\n");
   inspectProgram.push("\t\r\n");
   inspectProgram.push("\tif(distance > lower and distance < upper)\r\n");
-  inspectProgram.push("\t\treturn true\r\n");
+  inspectProgram.push("\t\treturn\r\n");
   inspectProgram.push("\tendif\r\n");
   inspectProgram.push("\t  \r\n");
-  inspectProgram.push("\treturn false\r\n");
+
+  inspectProgram.push("\t# Position out of tolerance\r\n");
+  inspectProgram.push("\tDialog message=\"Position out of tolerance\" caption=\"Position out of tolerance\" Error\r\n");
+  inspectProgram.push("\r\n");
+
   inspectProgram.push("endprogram\r\n");
 
   inspectProgramOperation = {operationProgram: inspectProgram};
@@ -2756,12 +2772,20 @@ function getInspectionFilename() {
   }
   
   resFile = resFile.replace(/[^a-zA-Z0-9_ ]/g, "");
-  resFile += ".MSR";
+  resFile += ".txt";
   return resFile;
 }
 
+// add a varibale to the global declarations
+function addVariable(value) {
+  if (SimPLProgram.globalVariableList.indexOf(value) == -1) {
+    SimPLProgram.globalVariableList.push(value);
+  }
+}
+
 function inspectionCreateResultsFileHeader() {
-  SimPLProgram.globalVariableList.push("InspectionFilename:string");
+  // Add the filename to the global variables declarations
+  addVariable("InspectionFilename:string");
 
   writeBlock("InspectionFilename = \"" + getInspectionFilename() + "\"");
   writeComment("delete existing old file");
@@ -2818,9 +2842,10 @@ function inspectionProcessSectionEnd() {
   if (isInspectionOperation(currentSection)) {
     // close inspection results file if the NC has inspection toolpaths
     if ((!properties.singleResultsFile) || (inspectionVariables.inspectionSectionCount == inspectionVariables.inspectionSections)) {
-      writeBlock("FileWriteLine filename=InspectionFilename value=\"END\"");
+ 
       // TODO comisioning mode einfügen
     }
+    writeBlock("FileWriteLine filename=InspectionFilename value=\"END\"");
     writeBlock(properties.stopOnInspectionEnd == true ? "Dialog message=\"Finish Inspection\" Yes No caption=\"Inspection\" Info" : "");
   }
 }
