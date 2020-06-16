@@ -2438,8 +2438,6 @@ function getProbingArguments(cycle, probeWorkOffsetCode, additionalArguments) {
   
   return [
     "ProbeGeometry measResult=measResult",
-    "expectedDimension1=" + xyzFormat.format(cycle.width1),
-    (cycle.width2 ? "expectedDimension2=" + xyzFormat.format(cycle.width2) : undefined),
     (cycle.angleAskewAction == "stop-message" ? "angleTolerance=" + xyzFormat.format(cycle.toleranceAngle ? cycle.toleranceAngle : 0) : undefined),
     ((cycle.updateToolWear && cycle.toolWearErrorCorrection < 100) ? "toolWearErrorCorrection=" + xyzFormat.format(cycle.toolWearErrorCorrection ? cycle.toolWearErrorCorrection / 100 : 100) : undefined),
     (cycle.wrongSizeAction == "stop-message" ? "sizeTolerance=" + xyzFormat.format(cycle.toleranceSize ? cycle.toleranceSize : 0) : undefined),
