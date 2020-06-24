@@ -1,5 +1,5 @@
 /**
-  Copyright (C) 2012-2018 by Autodesk, Inc.
+  Copyright (C) 2012-2020 by Autodesk, Inc.
   All rights reserved.
 
   DATRON post processor configuration.
@@ -13,7 +13,7 @@
 description = "DATRON next";
 vendor = "DATRON";
 vendorUrl = "http://www.datron.com";
-legal = "Copyright (C) 2012-2018 by Autodesk, Inc.";
+legal = "Copyright (C) 2012-2020 by Autodesk, Inc.";
 certificationLevel = 2;
 minimumRevision = 40783;
 
@@ -36,10 +36,11 @@ allowedCircularPlanes = (1 << PLANE_XY); // allow XY plane only
 // user-defined properties
 properties = {
   writeMachine : true, // write machine
+  writeDateAndTime: true, // writes date and time
   showNotes : false, // specifies that operation notes should be output
-  useSmoothing : true, // specifies if smoothing should be used or not
-  useDynamic : true, // specifies using dynamic mode or not
-  machineType : "NEO", // specifiees the DATRON machine type
+  useSmoothing : true, // specifies if smoothing should be used
+  useDynamic : true, // specifies if dynamic mode should be used
+  machineType : "NEO", // specifies the DATRON machine type
   useParkPosition : true, // specifies to use park position at the end of the program
   writeToolTable : true, // write the table with the geometric tool informations
   useSequences : true, // this use a sequence in the output format to perform on large files
@@ -47,21 +48,21 @@ properties = {
   writeCoolantCommands : true, // disable the coolant commands in the file
   useParametricFeed : true, // specifies that feed should be output using parameters
   waitAfterOperation : false, // optional stop
-  rotationAxisSetup : "none", // define the rotatry axis setup for the machine
+  rotaryAxisSetup : "NONE", // specifies if the machine has rotary axes
   useSuction: false, // activate suction support
   createThreadChamfer: false, // create a chamfer with the thread milling tool
-  preloadTool : false, //prepare a Tool for the DATROn tool assist
-  writePathOffset : true, //write the definition for the PathOffset variable for every Operation
+  preloadTool : false, // preloads next tool on tool change if any
   useZAxisOffset : false,
   useRtcp : false  // use the NEXT feature RTCP for multiaxis operations
 };
- 
+
 // user-defined property definitions
 propertyDefinitions = {
   writeMachine: {title:"Write machine", description:"Output the machine settings in the header of the code.", group:0, type:"boolean"},
+  writeDateAndTime: {title:"Write date and time", description:"Output date and time in the header of the code.", group:0, type:"boolean"},
   showNotes: {title:"Show notes", description:"Writes operation notes as comments in the outputted code.", type:"boolean"},
-  useSmoothing: {title:"Use smoothing", description:"Specifies if smoothing should be used or not.", type:"boolean"},
-  useDynamic: {title:"Dynamic mode", description:"Specifies the using of dynamic mode or not.", type:"boolean"},
+  useSmoothing: {title:"Use smoothing", description:"Specifies that smoothing mode should be used.", type:"boolean"},
+  useDynamic: {title:"Dynamic mode", description:"Specifies that dynamic mode should be used.", type:"boolean"},
   machineType:{title:"Machine type",
     description:"Specifies the DATRON machine type.",
     type:"enum",
@@ -72,23 +73,22 @@ propertyDefinitions = {
     ]},
   useParkPosition: {title: "Park at end of program", description:"Enable to use the park position at end of program.", type:"boolean"},
   writeToolTable: {title:"Write tool table", description:"Write a tool table containing geometric tool information.", group:0, type:"boolean"},
-  useSequences: {title:"Use sequences", description:"If enables, sequences are used in the output format on large files.", type:"boolean"},
+  useSequences: {title:"Use sequences", description:"If enabled, sequences are used in the output format on large files.", type:"boolean"},
   useExternalSequencesFiles: {title:"Use external sequence files", description:"If enabled, an external sequence file is created for each operation.", type:"boolean"},
   writeCoolantCommands: {title:"Write coolant commands", description:"Enable/disable coolant code outputs for the entire program.", type:"boolean"},
-  useParametricFeed:  {title:"Parametric feed", description:"Specifies the feed value that should be output using a Q value.", type:"boolean"},
-  waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop is outputted to pause after each operation.", type:"boolean"},
-  rotationAxisSetup : {title:"Setup rotary axis",
-    description:"define if the machine is setup with additional rotary axis.",
+  useParametricFeed:  {title:"Parametric feed", description:"Specifies that parametric feedrates should be used.", type:"boolean"},
+  waitAfterOperation: {title:"Wait after operation", description:"If enabled, an optional stop will get generated to pause after each operation.", type:"boolean"},
+  rotaryAxisSetup : {title:"Rotary axis setup",
+    description:"Specifies the rotary axis setup.",
     type:"enum",
     values:[
       {title:"No rotary axis", id:"NONE"},
-      {title:"4th axis along X+", id:"4th"},
-      {title:"DST (4th & 5th axis)", id:"DST"}
+      {title:"4th axis along X+", id:"4X"},
+      {title:"DST (5 axis)", id:"DST"}
     ]},
   useSuction: {title:"Use Suction", description:"Enable the suction for every operation.", type:"boolean"},
-  createThreadChamfer: {title:"Create a Thread Chamfer", description:"create a chamfer with the thread milling tool", type:"boolean"},
-  preloadTool:{title:"Preload the next Tool", description:"Preload the next Tool in the DATRON Tool assist.", type: "boolean"},
-  writePathOffset:{title:"Write Path Offset", description:"Write the PathOffset declaration.", type: "boolean"},
+  createThreadChamfer: {title:"Create a Thread Chamfer", description:"Create a chamfer with the thread milling tool", type:"boolean"},
+  preloadTool:{title:"Preload tool", description:"Preload the next Tool in the DATRON Tool assist.", type: "boolean"},
   useZAxisOffset:{title:"Output Z Offset command", description:"This creates a command to allow a manual Z offset for each operation.", type:"boolean"},
   useRtcp:{title:"Use RTCP", description:"Use the NEXT 5axis setup correction.", type:"boolean"}
 };
@@ -120,8 +120,8 @@ var jOutput = createVariable({prefix:" dY=", force : true}, xyzFormat);
 var kOutput = createVariable({prefix:" dZ="}, xyzFormat);
 
 // fixed settings
+probeMultipleFeatures = true;
 var useDatronFeedCommand = false; // unsupported for now, keep false
-var language = "de"; // specifies the language, replace with getLangId()
 var spacingDepth = 0;
 var spacingString = "  ";
 var spacing = "##########################################################";
@@ -168,16 +168,16 @@ var nowSec = now.getSeconds();
 function getSequenceName(section) {
   var sequenceName = "";
   if (properties.useExternalSequencesFiles) {
-    sequenceName += FileSystem.getFilename(getOutputPath().substr(0, getOutputPath().lastIndexOf("."))) + "_";
+    sequenceName += getProgramFilename();
   }
   sequenceName += "SEQUENCE_" + mapComment(getOperationDescription(section));
   return sequenceName;
 }
 
-function getFilename() {
-  var filePath = getOutputPath();
-  var filename = filePath.slice(filePath.lastIndexOf("\\") + 1, filePath.lastIndexOf("."));
-  return filename;
+function getProgramFilename() {
+  var outputPath = getOutputPath();
+  var programFilename = FileSystem.getFilename(outputPath.substr(0, outputPath.lastIndexOf("."))) + "_";
+  return programFilename;
 }
 
 function getOperationName(section) {
@@ -197,17 +197,16 @@ function getSpacing() {
 }
 
 /**
-  Redirect the output to an infinite number of buffers ;-)
-  works like a stack you can use many redirection levels and go back again
+  Redirect the output to an infinite number of buffers
 */
 var writeRedirectionStack = new Array();
 
-function setWriteRedirection(redirectionbuffer) {
-  writeRedirectionStack.push(redirectionbuffer);
+function setWriteRedirection(redirectionBuffer) {
+  writeRedirectionStack.push(redirectionBuffer);
 }
 
 function resetWriteRedirection() {
-  return writeRedirectionStack.pop();
+  writeRedirectionStack.pop();
 }
 
 /**
@@ -218,7 +217,7 @@ function writeBlock() {
   if (writeRedirectionStack.length == 0) {
     writeWords(text);
   } else {
-    writeRedirectionStack[writeRedirectionStack.length - 1].append(text + "\r\n");
+    writeRedirectionStack[writeRedirectionStack.length - 1].append(text + EOL);
   }
 }
 
@@ -231,7 +230,7 @@ function writeComment(text) {
     if (writeRedirectionStack.length == 0) {
       writeln(text);
     } else {
-      writeRedirectionStack[writeRedirectionStack.length - 1].append(text + "\r\n");
+      writeRedirectionStack[writeRedirectionStack.length - 1].append(text + EOL);
     }
   }
 }
@@ -269,18 +268,17 @@ function formatVariable(text) {
 
 function onOpen() {
   // note: setup your machine here
-  if (properties.rotationAxisSetup == "4th") {
+  if (properties.rotaryAxisSetup == "4X") {
     var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[0, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis);
     machineConfiguration.setVendor("DATRON");
     machineConfiguration.setModel("NEO with A Axis");
     machineConfiguration.setDescription("DATRON NEXT Control with additional A-Axis");
     setMachineConfiguration(machineConfiguration);
-    optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
+    optimizeMachineAngles2(properties.useRtcp ? 0 : 1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
   }
 
-  // note: setup your machine here
-  if (properties.rotationAxisSetup == "DST") {
+  if (properties.rotaryAxisSetup == "DST") {
     var aAxis = createAxis({coordinate:0, table:true, axis:[1, 0, 0], range:[-10, 110], cyclic:false, preference:0});
     var cAxis = createAxis({coordinate:2, table:true, axis:[0, 0, 1], range:[-360, 360], cyclic:true, preference:0});
     machineConfiguration = new MachineConfiguration(aAxis, cAxis);
@@ -288,7 +286,7 @@ function onOpen() {
     machineConfiguration.setModel("NEXT with DST");
     machineConfiguration.setDescription("DATRON NEXT Control with additional DST");
     setMachineConfiguration(machineConfiguration);
-    optimizeMachineAngles2(1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
+    optimizeMachineAngles2(properties.useRtcp ? 0 : 1); // TCP mode 0:Full TCP 1: Map Tool Tip to Axis
   }
 
   if (!machineConfiguration.isMachineCoordinate(0)) {
@@ -301,16 +299,15 @@ function onOpen() {
     cOutput.disable();
   }
 
-  // header of the main program
+  // header
   writeProgramHeader();
   spacingDepth -= 1;
   resetWriteRedirection();
 
-  //Probing Surface Inspection
+  // surface inspection
   if (typeof inspectionWriteVariables == "function") {
     inspectionWriteVariables();
   }
-  // the rest of program main will be set at closing when all the code is analysed
 }
 
 function getOperationDescription(section) {
@@ -344,26 +341,10 @@ function createToolVariables() {
   return toolVariables;
 }
 
-function getNextTool(number) {
-  var currentSectionId = getCurrentSectionId();
-  if (currentSectionId < 0) {
-    return null;
-  }
-  for (var i = currentSectionId + 1; i < getNumberOfSections(); ++i) {
-    var section = getSection(i);
-    var sectionTool = section.getTool();
-    if (number != sectionTool.number) {
-      return sectionTool; // found next tool
-    }
-  }
-  return null; // not found
-}
-
 function createToolDescriptionTable() {
   if (!properties.writeToolTable) {
-    return new Array();
+    return;
   }
-  
   var toolDescriptionArray = new Array();
   var toolNameList = new Array();
   var numberOfSections = getNumberOfSections();
@@ -376,18 +357,11 @@ function createToolDescriptionTable() {
       if (toolNameList.indexOf(toolName) == -1) {
         toolNameList.push(toolName);
         toolDescriptionArray.push(toolProgrammed);
-      } else {
-        /*
-       if (toolDescriptionArray.indexOf(toolProgrammed) == -1) {
-         error("\r\n#####################################\r\nOne ore more tools have the same name!\r\nPlease change the tool number to make the name unique.\r\n" + toolDescriptionArray.join("\r\n") + "\r\n\r\n" +
-         toolNameList.join("\r\n") + "#####################################\r\n");
-       }
-*/
       }
     }
   }
 
-  return toolDescriptionArray;
+  SimPLProgram.toolDescriptionList = toolDescriptionArray;
 }
 
 function createToolDescription(tool) {
@@ -423,7 +397,7 @@ function createToolName(tool) {
     toolName += "_" + tool.comment;
   }
   if (tool.diameter) {
-    toolName += "_D" + tool.diameter;
+    toolName += "_D" + dimensionFormat.format(tool.diameter);
   }
   var description = tool.getDescription();
   if (description) {
@@ -519,10 +493,15 @@ function translateToolType(toolType) {
 
 function writeProgramHeader() {
   // write creation Date
-  var date = timeFormat.format(nowDay) + "." + timeFormat.format(nowMonth) + "." + now.getFullYear();
-  var time = timeFormat.format(nowHour) + ":" + timeFormat.format(nowMin);
   setWriteRedirection(SimPLProgram.moduleName);
-  writeComment("!File ; generated at " + date + " - " + time);
+  if (properties.writeDateAndTime) {
+    var date = timeFormat.format(nowDay) + "." + timeFormat.format(nowMonth) + "." + now.getFullYear();
+    var time = timeFormat.format(nowHour) + ":" + timeFormat.format(nowMin);
+    writeComment("!File ; generated at " + date + " - " + time);
+  } else {
+    writeComment("!File ;");
+  }
+
   if (programComment) {
     writeComment(formatComment(programComment));
   }
@@ -553,7 +532,7 @@ function writeProgramHeader() {
   resetWriteRedirection();
 
   // set the table of used tools in the header of the program
-  SimPLProgram.toolDescriptionList =  createToolDescriptionTable();
+  createToolDescriptionTable();
 
   // set the workpiece information
   SimPLProgram.workpieceGeometry = writeWorkpiece();
@@ -577,7 +556,7 @@ function writeProgramHeader() {
 
   // set usings
   SimPLProgram.usingList.push("using Base");
-  if (properties.rotationAxisSetup != "NONE") {
+  if (properties.rotaryAxisSetup != "NONE" && properties.useRtcp) {
     SimPLProgram.usingList.push("using Rtcp");
   }
   if (properties.waitAfterOperation) {
@@ -587,10 +566,7 @@ function writeProgramHeader() {
   addInspectionReferences();
  
   // set paramtric feed variables
-  //var feedDeclaration = new Array();
-  var currentMovements = new Array();
-  var numberOfSections = getNumberOfSections();
-  for (var i = 0; i < numberOfSections; ++i) {
+  for (var i = 0; i < getNumberOfSections(); ++i) {
     var section = getSection(i);
     if (properties.useParametricFeed && (!useDatronFeedCommand)) {
       activeFeeds = initializeActiveFeeds(section);
@@ -604,24 +580,20 @@ function writeProgramHeader() {
     }
   }
 
-  // if (!useDatronFeedCommand) {
-  //   if (feedDeclaration != 0) {
-  //     SimPLProgram.globalVariableList.push(feedDeclaration);
-  //   }
-  // }
   setWriteRedirection(SimPLProgram.mainProgram);
   writeBlock("export program Main # " + (programName ? (SP + formatComment(programName)) : "") + ((unit == MM) ? " MM" : " INCH"));
   spacingDepth += 1;
   writeBlock("Absolute");
 
-  // ste the multiaxis mode
-  if (properties.rotationAxisSetup != "NONE" && properties.useRtcp) {
+  // set the multiaxis mode
+  if (properties.rotaryAxisSetup != "NONE" && properties.useRtcp) {
     writeBlock("MultiAxisMode On");
   }
   
   // set the parameter tool table
   SimPLProgram.globalVariableList.push(createToolVariables());
 
+  // write the parameter tool table
   if (!properties.writeToolTable) {
     var tools = getToolTable();
     writeComment("Number of tools in use" + ": " + tools.getNumberOfTools());
@@ -933,11 +905,8 @@ function setWorkPlane(abc) {
   }
   forceWorkPlane(); // always need the new workPlane
   forceABC();
-  if ((properties.rotationAxisSetup != "NONE") && properties.useRtcp) {
-    writeBlock("MoveToSafetyPosition");
-  } else {
-    writeBlock("MoveToSafetyPosition");
-  }
+
+  writeBlock("MoveToSafetyPosition");
   writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
 
   currentWorkPlaneABC = abc;
@@ -997,15 +966,13 @@ function getWorkPlaneMachineABC(workPlane) {
 }
 
 function onSection() {
-  // this is the container that hold all operation informations...
   currentOperation = new NewOperation(getOperationName(currentSection));
   setWriteRedirection(currentOperation.operationProgram);
 
   var forceToolAndRetract = optionalSection && !currentSection.isOptional();
   optionalSection = currentSection.isOptional();
-  var tool = currentSection.getTool();
 
-  if (!isProbeOperation(currentSection) && hasParameter("operation:cycleTime")) {
+  if (!isProbeOperation(currentSection)) {
     writeComment("Operation Time: " + formatCycleTime(currentSection.getCycleTime()));
   }
 
@@ -1024,7 +991,7 @@ function onSection() {
   spacingDepth += 1;
 
   if (passThrough) {
-    var joinString = "\r\n" + getSpacing();
+    var joinString = EOL + getSpacing();
     var passThroughString = passThrough.join(joinString);
     if (passThroughString != "") {
       writeBlock(passThroughString);
@@ -1036,12 +1003,9 @@ function onSection() {
   writeBlock("BeginBlock name=" + "\"" + getOperationDescription(currentSection) + "\"");
   var operationTolerance = tolerance;
   if (hasParameter("operation:tolerance")) {
-    if (operationTolerance < getParameter("operation:tolerance")) {
-      operationTolerance = getParameter("operation:tolerance");
-    }
+    operationTolerance = Math.max(getParameter("operation:tolerance"), 0);
   }
-
-  //load the matching workOffset
+  // load the matching workOffset
   var workOffset = currentSection.getWorkOffset();
   if (workOffset != 0) {
     writeBlock("LoadWcs name=\"" + workOffset + "\"");
@@ -1055,11 +1019,11 @@ function onSection() {
   if (properties.useDynamic) {
     var dynamic = 5;
     operationName = getOperationName(currentSection).toUpperCase();
-    dynamicIndex = operationName.lastIndexOf("DYN") + 3;
-    expliciteDynamic = parseInt(operationName.substring(dynamicIndex, dynamicIndex + 1), 10);
-    if ((!isNaN(expliciteDynamic)) && (expliciteDynamic > 0 && expliciteDynamic < 6)) {
-      writeBlock("Dynamic = " + expliciteDynamic +  "  # Created from Operation Name");
-      dynamic = expliciteDynamic;
+    dynamicIndex = operationName.lastIndexOf("DYN");
+    explicitDynamic = parseInt(operationName.substring(dynamicIndex + 3, dynamicIndex + 4), 5);
+    if (!isNaN(explicitDynamic) && ((explicitDynamic > 0 && explicitDynamic < 6))) {
+      writeBlock("Dynamic = " + explicitDynamic +  "  # Created from operation name");
+      dynamic = explicitDynamic;
     } else {
       // set machine type specific dynamic sets
       switch (properties.machineType) {
@@ -1067,17 +1031,17 @@ function onSection() {
         dynamic = 5;
         break;
       case "MX":
-      case "CUBE":
-        if (operationTolerance <= (unit == MM ? 0.04 : (0.04 / 25.4))) {
+      case "Cube":
+        if (operationTolerance <= toPreciseUnit(0.04, MM)) {
           dynamic = 4;
         }
-        if (operationTolerance <= (unit == MM ? 0.02 : (0.02 / 25.4))) {
+        if (operationTolerance <= toPreciseUnit(0.02, MM)) {
           dynamic = 3;
         }
-        if (operationTolerance <= (unit == MM ? 0.005 : (0.005 / 25.4))) {
+        if (operationTolerance <= toPreciseUnit(0.005, MM)) {
           dynamic = 2;
         }
-        if (operationTolerance <= (unit == MM ? 0.003 : (0.003 / 25.4))) {
+        if (operationTolerance <= toPreciseUnit(0.003, MM)) {
           dynamic = 1;
         }
         break;
@@ -1085,7 +1049,6 @@ function onSection() {
       writeBlock("Dynamic = " + dynamic);
     }
   }
-
   if (properties.waitAfterOperation) {
     showWaitDialog(getOperationName(currentSection));
   }
@@ -1095,17 +1058,17 @@ function onSection() {
       forceWorkPlane();
       cancelTransformation();
       var abc = currentSection.getInitialToolAxisABC();
-      if ((properties.rotationAxisSetup != "NONE") && properties.useRtcp) {
+      if ((properties.rotaryAxisSetup != "NONE") && properties.useRtcp) {
         writeBlock("Rtcp On");
       }
       writeBlock("MoveToSafetyPosition");
+      forceABC();
       writeBlock("Rapid" + aOutput.format(abc.x) + bOutput.format(abc.y) + cOutput.format(abc.z));
     } else {
       forceWorkPlane();
       var abc = getWorkPlaneMachineABC(currentSection.workPlane);
-      
       setWorkPlane(abc);
-      if ((properties.rotationAxisSetup != "NONE") && properties.useRtcp) {
+      if ((properties.rotaryAxisSetup != "NONE") && properties.useRtcp) {
         writeBlock("Rtcp On");
       }
     }
@@ -1117,10 +1080,10 @@ function onSection() {
          "\r\n|              error                     |" +
          "\r\n|                                        |" +
          "\r\n| Tool orientation detected.             |" +
-         "\r\n| You have to enable the property        |" +
-         "\r\n| rotationAxisSetup                      |" +
-         "\r\n| rotherwise you can only post           |" +
-         "\r\n| 3 Axis programs.                       |" +
+         "\r\n| You have to specify your kinematic     |" +
+         "\r\n| by using property 'Rotary axis setup', |" +
+         "\r\n| otherwise you can only post            |" +
+         "\r\n| 3 axis programs.                       |" +
          "\r\n| If you still have issues,              |" +
          "\r\n| please contact www.DATRON.com!         |" +
          "\r\n|________________________________________|\r\n");
@@ -1154,7 +1117,7 @@ function onSection() {
     writeBlock("ZAxisOffset = 0");
   }
 
-  // radius Compensation
+  // radius compensation
   var compensationType;
   if (hasParameter("operation:compensationType")) {
     compensationType = getParameter("operation:compensationType");
@@ -1169,7 +1132,7 @@ function onSection() {
     wearCompensation = 0;
   }
 
-  if (properties.writePathOffset) {
+  if (true /*properties.writePathOffset*/) {
     switch (compensationType) {
     case "computer":
       break;
@@ -1177,8 +1140,6 @@ function onSection() {
       writeBlock("PathOffset = 0");
       break;
     case "wear":
-      writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
-      break;
     case "inverseWear":
       writeBlock("PathOffset = " + dimensionFormat.format(wearCompensation));
       break;
@@ -1203,7 +1164,7 @@ function onSection() {
       );
     }
 
-    //preload the next tool for the Datron tool assist
+    // preload the next tool for the Datron tool assist
     if (properties.preloadTool) {
       var nextTool = getNextTool(tool.number);
       if (nextTool) {
@@ -1258,26 +1219,25 @@ function onSection() {
   var sequenceParamter = new Array();
 
   if (hasParameter("operation:cycleType")) {
-
-    //Reset all movements to suppress older entries...
+    // reset all movements to suppress older entries...
     activeMovements = new Array();
-
     var cycleType = getParameter("operation:cycleType");
     writeComment("Parameter " + cycleType + " cycle");
+    var cycleFeedrate = currentSection.getParameter("feedrate");
+    var cyclePlungeFeedrate = currentSection.getParameter("plungeFeedrate");
 
     switch (cycleType) {
     case "thread-milling":
       writeBlock("SetFeedTechnology" + " ramp=" + feedFormat.format(getParameter("movement:cutting")) + " finishing=" + feedFormat.format(getParameter("movement:finish_cutting")));
       var diameter = currentSection.getParameter("diameter");
       var pitch = currentSection.getParameter("pitch");
-      var finishing = parseFloat(currentSection.getParameter("stepover"));
-      
+      var finishing = currentSection.getParameter("stepover");
+
       writeBlock("nominalDiameter=" + xyzFormat.format(diameter));
       sequenceParamter.push("nominalDiameter=nominalDiameter");
       writeBlock("pitch=" + xyzFormat.format(pitch));
       sequenceParamter.push("pitch=pitch");
- 
-      if (!isNaN(finishing)) {
+      if (xyzFormat.isSignificant(parseInt(finishing, 10))) {
         writeBlock("finishing=" + xyzFormat.format(finishing));
         sequenceParamter.push("finishing=finishing");
       } else {
@@ -1301,7 +1261,7 @@ function onSection() {
 */
       break;
     case "bore-milling":
-      writeBlock("SetFeedTechnology roughing=" + feedFormat.format(getParameter("movement:cutting")) + " finishing=" + feedFormat.format(getParameter("movement:cutting")));
+      writeBlock("SetFeedTechnology roughing=" + feedFormat.format(cycleFeedrate) + " finishing=" + feedFormat.format(cycleFeedrate));
       writeBlock("diameter = " + dimensionFormat.format(currentSection.getParameter("diameter")));
       sequenceParamter.push("diameter=diameter");
 
@@ -1311,10 +1271,10 @@ function onSection() {
       sequenceParamter.push("repeatPass=repeatPass");
       break;
     case "drilling":
-      writeBlock("SetFeedTechnology plunge=" + feedFormat.format(getParameter("movement:plunge")));
+      writeBlock("SetFeedTechnology plunge=" + feedFormat.format(cyclePlungeFeedrate));
       break;
     case "chip-breaking":
-      writeBlock("SetFeedTechnology plunge=" + feedFormat.format(getParameter("movement:plunge")) + " roughing=" + feedFormat.format(getParameter("movement:cutting")));
+      writeBlock("SetFeedTechnology plunge=" + feedFormat.format(cyclePlungeFeedrate) + " roughing=" + feedFormat.format(cycleFeedrate));
       writeBlock("infeedZ = " + dimensionFormat.format(currentSection.getParameter("incrementalDepth")));
       sequenceParamter.push("infeedZ=infeedZ");
       break;
@@ -1338,7 +1298,7 @@ function onSection() {
     if (properties.useExternalSequencesFiles) {
       spacingDepth -= 1;
       var filename = getOutputPath();
-      //sequenceFilePath = filename.substr(0, filename.lastIndexOf(".")) + "_" + currentSequenceName + ".seq";
+      // sequenceFilePath = filename.substr(0, filename.lastIndexOf(".")) + "_" + currentSequenceName + ".seq";
       sequenceFilePath = FileSystem.getFolderPath(getOutputPath()) + "\\";
       sequenceFilePath += currentSequenceName + ".seq";
       redirectToFile(sequenceFilePath);
@@ -1361,10 +1321,8 @@ function onSection() {
   // move to initial Position (this command move the Z Axis to safe high and repositioning in safe high after that drive Z to end position)
   var initialPosition = getFramePosition(currentSection.getInitialPosition());
   var xyz = xOutput.format(initialPosition.x) + yOutput.format(initialPosition.y) + zOutput.format(initialPosition.z);
-
   writeBlock("PrePositioning" + xyz);
 
-  // adds support for suction
   if (properties.useSuction) {
     writeBlock("Suction On");
   }
@@ -1381,20 +1339,20 @@ function showWaitDialog(operationName) {
 
 function writeWaitProgram() {
   waitProgram = new Array();
-  waitProgram.push("#Show the wait dialog for the next operation\r\n");
-  waitProgram.push("program showWaitDialog optional operationName:string\r\n");
-  waitProgram.push("  if not operationName hasvalue \r\n");
-  waitProgram.push("    operationName =" + "\"" + "\"\r\n");
-  waitProgram.push("  endif\r\n");
-  waitProgram.push("\r\n");
-  waitProgram.push("  messageString = " + "\"" + "Start next Operation\r"  + "\"" + "  + operationName \r\n");
-  waitProgram.push("  dialogRes = System::Dialog message=messageString caption=" + "\"" + "Start next Operation?" + "\"" + "Yes  Cancel\r\n");
-  waitProgram.push("  if dialogRes == System::DialogResult.Cancel\r\n");
-  waitProgram.push("    exit\r\n");
-  waitProgram.push("  endif\r\n");
-  waitProgram.push("endprogram\r\n");
-
-  waitProgramOperation = {operationProgram: waitProgram};
+  waitProgram =
+    ["#Show the wait dialog for the next operation",
+      "  if not operationName hasvalue",
+      "    operationName =" + "\"" + "\"",
+      "  endif",
+      "",
+      "  messageString = " + "\"" + "Start next Operation\r"  + "\"" + "  + operationName",
+      "  dialogRes = System::Dialog message=messageString caption=" + "\"" + "Start next Operation?" + "\"" + "Yes  Cancel",
+      "  if dialogRes == System::DialogResult.Cancel",
+      "    exit",
+      "  endif",
+      "endprogram"
+    ];
+  waitProgramOperation = {operationProgram: waitProgram.join(EOL)};
   SimPLProgram.operationList.push(waitProgramOperation);
 }
 
@@ -1403,7 +1361,6 @@ function onDwell(seconds) {
 }
 
 function onSpindleSpeed(spindleSpeed) {
-  // writeBlock("Rpm=" + rpmFormat.format((spindleSpeed < 6000) ? 6000 : spindleSpeed));
   writeBlock("Rpm=" + rpmFormat.format(spindleSpeed));
 }
 
@@ -1463,13 +1420,11 @@ function onLinear(x, y, z, feed) {
     if (d > 99) {
       warning(localize("The diameter offset exceeds the maximum value."));
     }
-    // TAG: um die Ebenen kuemmern
-    // writeBlock(gPlaneModal.format(17));
-    var compensationType = null;
+    var compensationType = undefined;
     if (currentSection.hasParameter("operation:compensationType")) {
       compensationType = currentSection.getParameter("operation:compensationType");
     }
-    
+
     switch (radiusCompensation) {
     case RADIUS_COMPENSATION_LEFT:
       switch (compensationType) {
@@ -1490,12 +1445,12 @@ function onLinear(x, y, z, feed) {
     case RADIUS_COMPENSATION_RIGHT:
       switch (compensationType) {
       case "control":
-        writeBlock("ToolCompensation Rigth");
-        writeBlock("PathCorrection Rigth");
+        writeBlock("ToolCompensation Right");
+        writeBlock("PathCorrection Right");
         break;
       case "wear":
       case "inverseWear":
-        writeBlock("PathCorrection Rigth");
+        writeBlock("PathCorrection Right");
         break;
       default:
         writeBlock("ToolCompensation Off");
@@ -1527,7 +1482,7 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
   }
 
   if (pendingRadiusCompensation >= 0) {
-    error(localize("radius compensation cannot be activated/deactivated for a circular move."));
+    error(localize("Radius compensation cannot be activated/deactivated for a circular move."));
     return;
   }
 
@@ -1599,21 +1554,12 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
   var b = bOutput.format(_b);
   var c = cOutput.format(_c);
   var f = getFeed(feed);
-  
-  if (f) {
-    writeBlock(f);
-  }
+
+  writeBlock(f);
   if (x || y || z || a || b || c) {
     var xyzabc = x + y + z + a + b + c;
     writeBlock("Line" + xyzabc);
   }
-  //else if (f) {
-  //   if (getNextRecord().isMotion()) { // try not to output feed without motion
-  //     forceFeed(); // force feed on next line
-  //   } else {
-  //     writeBlock(getFeed(feed));
-  //   }
-  // }
 }
 
 function onRewindMachine(a, b, c) {
@@ -1661,10 +1607,8 @@ function setCoolant(coolant) {
 
 var isInsideProgramDeclaration = false;
 var directNcOperation;
-function parseManualNc(text) {
- 
-  // eslint-disable-next-line no-useless-escape
-  var modulePattern = new RegExp("\.*(using|import)");
+function parseManualNc(text) { // todo
+  var modulePattern = new RegExp(".*(using|import)");
   var isModuleImport = modulePattern.test(text);
   if (isModuleImport) {
     SimPLProgram.usingList.push(text);
@@ -1673,10 +1617,11 @@ function parseManualNc(text) {
  
   var programPattern = /(?:\s*program\s+)(\w+)/;
   var isProgramDeclaration = programPattern.test(text);
-
   if (isProgramDeclaration) {
     var subProgramName =  programPattern.exec(text);
-    if (subProgramName == undefined) {return;}
+    if (subProgramName == undefined) {
+      return;
+    }
     directNcOperation = {operationCall:subProgramName[1], operationProgram: new StringBuffer()};
     SimPLProgram.operationList.push(directNcOperation);
     isInsideProgramDeclaration = true;
@@ -1685,27 +1630,30 @@ function parseManualNc(text) {
   var isEndProgram = (/\s*endprogram/).test(text);
   if (isEndProgram) {
     isInsideProgramDeclaration = false;
-    directNcOperation.operationProgram.append(text + "\r\n");
+    directNcOperation.operationProgram.append(text + EOL);
     return;
   }
 
   if (isInsideProgramDeclaration) {
-    directNcOperation.operationProgram.append(text + "\r\n");
+    directNcOperation.operationProgram.append(text + EOL);
     return;
   }
-
   return;
 }
 
 function onManualNC(command, value) {
+  if (command == COMMAND_PASS_THROUGH) {
+    error(localize("Manual NC pass through is currently not supported."));
+    return;
+  }
   switch (command) {
-  case 42: // Manual NC enumeration code ???
-    value = parseManualNc(value);
-    break;
-  case 40:  // Comment
+  // case COMMAND_PASS_THROUGH:
+  //   value = parseManualNc(value);
+  //   break;
+  case COMMAND_COMMENT:
     value = "# " + value;
     break;
-  case 41: //wait
+  case COMMAND_DWELL:
     value = "Sleep seconds=" + value;
     break;
   case COMMAND_COOLANT_OFF:
@@ -1730,37 +1678,37 @@ function onManualNC(command, value) {
   case COMMAND_STOP_CHIP_TRANSPORT:
     value = "ChipConveyor Off";
     break;
-  case COMMAND_OPEN_DOOR: //open door
+  case COMMAND_OPEN_DOOR:
     value = "ReleaseDoor";
     break;
-  case COMMAND_CLOSE_DOOR: //close door not needed
+  case COMMAND_CLOSE_DOOR:
     return;
-  case COMMAND_CALIBRATE: //calibrate
+  case COMMAND_CALIBRATE:
     value = "# calibration currently not supported!";
     break;
-  case COMMAND_VERIFY: // check part
+  case COMMAND_VERIFY:
     value = "Dialog message=\"Please check workpiece!\" Ok Cancel caption=\"Cam generated dialog\"";
     break;
-  case COMMAND_CLEAN: // clean part
+  case COMMAND_CLEAN:
     value = "Dialog message=\"Please clean workpiece!\" Ok Cancel caption=\"Cam generated dialog\"";
     break;
-  case 43: // action no idea for what has a paramter
+  case COMMAND_ACTION:
     value = "# Action currently not supported!";
     break;
-  case 44: // print message
+  case COMMAND_PRINT_MESSAGE:
     // value = 'Dialog message="' + value + '" Ok Cancel caption="Cam generated dialog"'
     SimPLProgram.usingList.push("using File");
     SimPLProgram.usingList.push("using DateTimeModule");
     var message = (" value=(GetNow + \"\t" + value + "\")");
-    value = "FileWriteLine filename=\"" + getFilename() + ".log\""  + message;
+    value = "FileWriteLine filename=\"" + getProgramFilename() + ".log\""  + message;
     break;
-  case 46: // show message
+  case COMMAND_DISPLAY_MESSAGE:
     value = "StatusMessage message=\"" + value + "\"";
     break;
-  case COMMAND_ALARM: // alarm
+  case COMMAND_ALARM:
     value = "Dialog message=\"Alarm!\" Ok Cancel caption=\"Cam generated dialog\"";
     break;
-  case COMMAND_ALERT: // alarm
+  case COMMAND_ALERT:
     value = "Dialog message=\"Warning!\" Ok Cancel caption=\"Cam generated dialog\"";
     break;
   case COMMAND_BREAK_CONTROL:
@@ -1772,7 +1720,7 @@ function onManualNC(command, value) {
   case COMMAND_OPTIONAL_STOP:
     value = "OptionalBreak";
     break;
-  case 45: //call subprogram
+  case COMMAND_CALL_PROGRAM:
     var subprogramName = "SubProgram_" + SimPLProgram.externalUsermodules.length;
     SimPLProgram.externalUsermodules.push("usermodule " + subprogramName + "=\"" + value + "\"");
     value = subprogramName;
@@ -1844,7 +1792,8 @@ function onCyclePoint(x, y, z) {
       error(localize("Updating WCS / work offset using probing is only supported by the CNC in the WCS frame."));
       return;
     }
-  
+    forceXYZ();
+    onPrePositioning(x, y, z); // todo would be needed for probeMultipleFeatures, but generates duplicated Prepositioning output, acceptable?
     var startPositionOffset = cycle.probeClearance + tool.cornerRadius;
   }
 
@@ -1852,32 +1801,32 @@ function onCyclePoint(x, y, z) {
   case "bore-milling":
     for (var i = 0; i <= cycle.repeatPass; ++i) {
       forceXYZ();
-      onRapid(x, y, cycle.clearance);
+      onExpandedRapid(x, y, cycle.clearance);
       boreMilling(cycle);
-      onRapid(x, y, cycle.clearance);
+      onExpandedRapid(x, y, cycle.clearance);
     }
     break;
   case "thread-milling":
     for (var i = 0; i <= cycle.repeatPass; ++i) {
       forceXYZ();
-      onRapid(x, y, cycle.clearance);
+      onExpandedRapid(x, y, cycle.clearance);
       threadMilling(cycle);
-      onRapid(x, y, cycle.clearance);
+      onExpandedRapid(x, y, cycle.clearance);
     }
     break;
   case "drilling":
     forceXYZ();
-    onRapid(x, y, cycle.clearance);
+    onExpandedRapid(x, y, cycle.clearance);
     drilling(cycle);
-    onRapid(x, y, cycle.clearance);
+    onExpandedRapid(x, y, cycle.clearance);
     break;
     /*
   case "chip-breaking":
     forceXYZ();
-    onRapid(x, y, null);
-    onRapid(x, y, cycle.retract);
+    onExpandedRapid(x, y, null);
+    onExpandedRapid(x, y, cycle.retract);
     chipBreaking(cycle);
-    onRapid(x, y, cycle.clearance);
+    onExpandedRapid(x, y, cycle.clearance);
     break;
 */
 
@@ -1888,9 +1837,9 @@ function onCyclePoint(x, y, z) {
   case "left-tapping-with-chip-breaking":
   case "right-tapping-with-chip-breaking":
     forceXYZ();
-    onRapid(x, y, cycle.clearance);
+    onExpandedRapid(x, y, cycle.clearance);
     tapping(cycle);
-    onRapid(x, y, cycle.clearance);
+    onExpandedRapid(x, y, cycle.clearance);
     break;
   case "probing-x":
     forceXYZ();
@@ -1915,8 +1864,8 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-y":
     forceXYZ();
-    onRapid(x, y, cycle.stock);
-    onLinear(x, y, (z - cycle.depth + tool.cornerRadius), cycle.feedrate);
+    onExpandedRapid(x, y, cycle.stock);
+    onExpandedLinear(x, y, (z - cycle.depth + tool.cornerRadius), cycle.feedrate);
     
     var measureString = "measResult = EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
@@ -1936,8 +1885,8 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-z":
     forceXYZ();
-    onRapid(x, y, cycle.stock);
-    onLinear(x, y, (Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract)), cycle.feedrate);
+    onExpandedRapid(x, y, cycle.stock);
+    onExpandedLinear(x, y, (Math.min(z - cycle.depth + cycle.probeClearance, cycle.retract)), cycle.feedrate);
   
     var measureString = "measResult = SurfaceMeasure ";
     if (probeWCS) {
@@ -1954,9 +1903,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-x-wall":
     var measureString = "measResult = SymmetryAxisMeasure";
-    measureString += " width=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " width=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Outside";
     measureString += " YAligned";
     measureString += " skipZMeasure";
@@ -1975,9 +1924,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-y-wall":
     var measureString = "measResult = SymmetryAxisMeasure";
-    measureString += " width=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " width=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Outside";
     measureString += " XAligned";
     measureString += " skipZMeasure";
@@ -1996,9 +1945,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-x-channel":
     var measureString = "measResult = SymmetryAxisMeasure";
-    measureString += " width=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " width=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Inside";
     measureString += " YAligned";
     measureString += " skipZMeasure";
@@ -2017,9 +1966,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-x-channel-with-island":
     var measureString = "measResult = SymmetryAxisMeasure";
-    measureString += " width=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " width=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Inside";
     measureString += " YAligned";
     measureString += " forceSafeHeight";
@@ -2039,9 +1988,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-y-channel":
     var measureString = "measResult = SymmetryAxisMeasure";
-    measureString += " width=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " width=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Inside";
     measureString += " XAligned";
     measureString += " skipZMeasure";
@@ -2060,9 +2009,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-y-channel-with-island":
     var measureString = "measResult = SymmetryAxisMeasure";
-    measureString += " width=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " width=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Inside";
     measureString += " XAligned";
     measureString += " forceSafeHeight";
@@ -2082,9 +2031,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-xy-circular-boss":
     var measureString = "measResult = CircleMeasure";
-    measureString += " diameter=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZPos=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " diameter=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZPos=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Outside";
     measureString += " skipZMeasure";
     if (probeWCS) {
@@ -2104,9 +2053,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-xy-circular-hole":
     var measureString = "measResult = CircleMeasure";
-    measureString += " diameter=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZPos=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " diameter=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZPos=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Inside";
     measureString += " skipZMeasure";
     if (probeWCS) {
@@ -2126,9 +2075,9 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-xy-circular-hole-with-island":
     var measureString = "measResult = CircleMeasure";
-    measureString += " diameter=" + cycle.width1;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " measureZPos=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " diameter=" + xyzFormat.format(cycle.width1);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " measureZPos=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Inside";
     measureString += " forceSafeHeight";
     measureString += " skipZMeasure";
@@ -2149,11 +2098,11 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-xy-rectangular-boss":
     var measureString = "measResult = RectangleMeasure";
-    measureString += " dimensionX=" + cycle.width1;
-    measureString += " dimensionY=" + cycle.width2;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " dimensionX=" + xyzFormat.format(cycle.width1);
+    measureString += " dimensionY=" + xyzFormat.format(cycle.width2);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " xMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
+    measureString += " yMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Outside";
     measureString += " Center";
     measureString += " skipZMeasure";
@@ -2175,11 +2124,11 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-xy-rectangular-hole":
     var measureString = "measResult = RectangleMeasure";
-    measureString += " dimensionX=" + cycle.width1;
-    measureString += " dimensionY=" + cycle.width2;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " dimensionX=" + xyzFormat.format(cycle.width1);
+    measureString += " dimensionY=" + xyzFormat.format(cycle.width2);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " xMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
+    measureString += " yMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Inside";
     measureString += " Center";
     measureString += " skipZMeasure";
@@ -2201,11 +2150,11 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-xy-rectangular-hole-with-island":
     var measureString = "measResult = RectangleMeasure";
-    measureString += " dimensionX=" + cycle.width1;
-    measureString += " dimensionY=" + cycle.width2;
-    measureString += " searchDistance=" + cycle.probeClearance;
-    measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " dimensionX=" + xyzFormat.format(cycle.width1);
+    measureString += " dimensionY=" + xyzFormat.format(cycle.width2);
+    measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
+    measureString += " xMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
+    measureString += " yMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " Inside";
     measureString += " Center";
     measureString += " forceSafeHeight";
@@ -2227,7 +2176,6 @@ function onCyclePoint(x, y, z) {
     }
     break;
   case "probing-xy-inner-corner":
-    // This is the method that match the hsm preview but ;-) not with probing
     // var probingDepth = (z - cycle.depth + tool.cornerRadius);
     // var measureString = "measResult = EdgeMeasure ";
 
@@ -2273,8 +2221,8 @@ function onCyclePoint(x, y, z) {
     measureString += " xMeasureYOffset=" + xyzFormat.format(cycle.probeClearance);
     measureString += " yMeasureXOffset=" + xyzFormat.format(cycle.probeClearance);
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
-    measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " xMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
+    measureString += " yMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " forceSafeHeight";
     measureString += " skipZMeasure";
     if (probeWCS) {
@@ -2294,7 +2242,6 @@ function onCyclePoint(x, y, z) {
     }
     break;
   case "probing-xy-outer-corner":
-    // This is the method that match the hsm preview but ;-) not with probing
     // var probingDepth = (z - cycle.depth + tool.cornerRadius);
     // var touchPositionX1 = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
     // var touchPositionY1 = y + approach(cycle.approach2) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
@@ -2315,14 +2262,16 @@ function onCyclePoint(x, y, z) {
     // onLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
     // onLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
 
+    var touchPositionX1 = x + approach(cycle.approach1) * (cycle.probeClearance + tool.diameter / 2 + cycle.probeOvertravel);
+    var probingDepth = (z - cycle.depth + tool.cornerRadius);
     var measureString = "measResult = EdgeMeasure ";
     measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
     measureString += " originShift=" + xyzFormat.format(-1 * (y + approach(cycle.approach1) * startPositionOffset));
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
     writeBlock(measureString);
     forceXYZ();
-    onLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
-    onLinear(x, y, probingDepth, cycle.feedrate);
+    onExpandedLinear(touchPositionX1, y, probingDepth, cycle.feedrate);
+    onExpandedLinear(x, y, probingDepth, cycle.feedrate);
 
     var isXNeagtive = (cycle.approach1 == "negative");
     var isYNeagtive = (cycle.approach2 == "negative");
@@ -2347,8 +2296,8 @@ function onCyclePoint(x, y, z) {
     measureString += " xMeasureYOffset=" + xyzFormat.format(cycle.probeClearance);
     measureString += " yMeasureXOffset=" + xyzFormat.format(cycle.probeClearance);
     measureString += " searchDistance=" + xyzFormat.format(cycle.probeClearance);
-    measureString += " xMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
-    measureString += " yMeasureZOffset=" + (z - cycle.depth + tool.diameter / 2);
+    measureString += " xMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
+    measureString += " yMeasureZOffset=" + xyzFormat.format((z - cycle.depth + tool.diameter / 2));
     measureString += " forceSafeHeight";
     measureString += " skipZMeasure";
     if (probeWCS) {
@@ -2369,8 +2318,8 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-x-plane-angle":
     forceXYZ();
-    onRapid(x, y, cycle.stock);
-    onLinear(x, y, (z - cycle.depth + tool.cornerRadius), cycle.feedrate);
+    onExpandedRapid(x, y, cycle.stock);
+    onExpandedLinear(x, y, (z - cycle.depth + tool.cornerRadius), cycle.feedrate);
    
     var measureString = "measResult = EdgeMeasureV2 ";
     measureString += (cycle.approach1 == "positive" ? "XPositive" : "XNegative");
@@ -2391,8 +2340,8 @@ function onCyclePoint(x, y, z) {
     break;
   case "probing-y-plane-angle":
     forceXYZ();
-    onRapid(x, y, cycle.stock);
-    onLinear(x, y, (z - cycle.depth + tool.cornerRadius), cycle.feedrate);
+    onExpandedRapid(x, y, cycle.stock);
+    onExpandedLinear(x, y, (z - cycle.depth + tool.cornerRadius), cycle.feedrate);
    
     var measureString = "measResult = EdgeMeasureV2 ";
     measureString += (cycle.approach1 == "positive" ? "YPositive" : "YNegative");
@@ -2417,10 +2366,9 @@ function onCyclePoint(x, y, z) {
   }
 
   // save probing result in defined wcs
-  if (probeWCS && currentSection.workOffset !== null) {
+  if (probeWCS && currentSection.workOffset !== undefined) {
     writeBlock("SaveWcs name=\"" + currentSection.workOffset + "\"");
   }
-
   return;
 }
 
@@ -2446,22 +2394,23 @@ function getProbingArguments(cycle, probeWorkOffsetCode, additionalArguments) {
     ((cycle.updateToolWear && cycleType == "probing-z") ? "Length" : undefined),
     ((cycle.updateToolWear && cycleType !== "probing-z") ? "Diameter" : undefined),
     (cycle.updateToolWear ? "toolUpdateTreshold=" + xyzFormat.format(cycle.toolWearUpdateThreshold ? cycle.toolWearUpdateThreshold : 0) : undefined),
-    (cycle.printResults ? "printResults" : undefined), // 1 for advance feature, 2 for reset feature count and advance component number. first reported result in a program should use W2.
+    (cycle.printResults ? "printResults" : undefined),
     conditional(probeWorkOffsetCode && probeWCS, "S" + probeWorkOffsetCode),
     additionalArguments
   ];
 }
 
 function hasProgramProbingOperations() {
+  var result = false;
   var numberOfSections = getNumberOfSections();
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
     if (isProbeOperation(section)) {
-      
-      return true;
+      result = true;
+      break;
     }
   }
-  return false;
+  return result;
 }
 
 function writeProbingProgram() {
@@ -2552,7 +2501,7 @@ function writeProbingProgram() {
     ("            endif        "),
     ("        endif"),
     ("        "),
-    // TODO wenn wear dann ist das so nicht richtig ;-)"),
+    // TODO code below needs to get fixed for type wear
     ("         toolId = ToolChangingUtilities::GetToolIdFromToolName(toolToUpdateWear)"),
     ("         newDiameter = ToolParameter::GetToolDiameter(toolNumber=toolId) - radiusCorrection * 2"),
     ("         ToolData::SetToolGeometry Diameter=newDiameter toolId=toolId"),
@@ -2591,16 +2540,6 @@ function writeProbingProgram() {
   probingProgramOperation = {operationProgram: probingProgram.join(EOL)};
   SimPLProgram.operationList.push(probingProgramOperation);
 }
-
-// program ProbeGeometry (
-
-//   optional positionTolerance:number
-//   optional toolWearErrorCorrection:number
-//   optional angleTolerance:number
-//   optional sizeTolerance:number
-//   optional toolToUpdateWear:string
-//   optional updateToolWear:toolWearGeometry
-//   printResults:boolean)
 
 function drilling(cycle) {
   var boreCommandString = new Array();
@@ -2661,11 +2600,9 @@ function threadMilling(cycle) {
   threadString.push("depth=" + depth);
   threadString.push("strokeRapidZ=" + xyzFormat.format(cycle.clearance - cycle.retract));
   threadString.push("strokeCuttingZ=" + xyzFormat.format(cycle.retract - cycle.stock));
-  // threadString.push("threadStandard=threadStandard");
   if (properties.createThreadChamfer) {
     threadString.push("Deburring");
   }
-  // ;
   // threadString.push("insideOutside=ThreadMillingSide.Inside");
   threadString.push("finishing=finishing");
   if (cycle.threading == "left") {
@@ -2732,17 +2669,13 @@ function onSectionEnd() {
   }
   writeBlock("ToolCompensation Off");
   writeBlock("PathCorrection Off");
-
-  // reset Z Offset value
   if (properties.useZAxisOffset) {
     writeBlock("ZAxisOffset = 0");
   }
-
-  if (currentSection.isMultiAxis && (properties.rotationAxisSetup != "NONE") && properties.useRtcp) {
+  if (currentSection.isMultiAxis() && (properties.rotaryAxisSetup != "NONE") && properties.useRtcp) {
     writeBlock("Rtcp Off");
   }
 
-  // adds support for suction
   if (properties.useSuction) {
     writeBlock("Suction Off");
   }
@@ -2766,12 +2699,13 @@ function onSectionEnd() {
 
 function writeBuffer(buffer) {
   if (buffer.length > 0) {
-    writeBlock(buffer.join("\r\n") + "\r\n");
+    writeBlock(buffer.join(EOL) + EOL);
     writeBlock("");
   }
 }
 
 function onClose() {
+
   if (properties.waitAfterOperation) {
     writeWaitProgram();
   }
@@ -2790,12 +2724,13 @@ function onClose() {
   writeBlock(SimPLProgram.moduleName);
   writeBlock("");
   writeBuffer(SimPLProgram.toolDescriptionList);
-  writeBuffer(SimPLProgram.workpieceGeometry);
+  writeBlock(SimPLProgram.workpieceGeometry);
+  writeBlock("");
   writeBuffer(SimPLProgram.sequenceList);
   writeBuffer(SimPLProgram.usingList);
   writeBuffer(SimPLProgram.externalUsermodules);
   writeBuffer(SimPLProgram.globalVariableList);
-
+  
   finishMainProgram();
   writeBlock(SimPLProgram.mainProgram);
   writeBlock("");
@@ -2827,7 +2762,7 @@ function finishMainProgram() {
     writeBlock("SpraySystem Off");
   }
     
-  if (properties.rotationAxisSetup != "NONE" && properties.useRtcp) {
+  if (properties.rotaryAxisSetup != "NONE" && properties.useRtcp) {
     writeBlock("MultiAxisMode Off");
     writeBlock("Rtcp Off");
   }
@@ -2846,25 +2781,18 @@ function finishMainProgram() {
   resetWriteRedirection();
 }
 
-// ######################################################################################################################
-// ######################################################################################################################
-// ######################################################################################################################
-// ######################################################################################################################
-
 // code for inspection support
 properties.singleResultsFile = true; // create a single file containing the results for all posted inspection toolpath
-properties.useDirectConnection = false; // determines whether the inspection results are writen to a file or read directly into Fusion
-properties.controlConnectorVersion = 1; // control connector version
 properties.toolOffsetType = "geomOnly";
-properties.commissioningMode = true; // Enables commissioning mode where M0 and messages are output at key points in the program
 properties.stopOnInspectionEnd = true; // Output M0 after each inspection section to retrieve results
+// properties.useDirectConnection = false; // determines whether the inspection results are writen to a file or read directly into Fusion
+// properties.controlConnectorVersion = 1; // control connector version
+// properties.commissioningMode = true; // Enables commissioning mode where M0 and messages are output at key points in the program
+
 if (propertyDefinitions === undefined) {
   propertyDefinitions = {};
 }
-
 propertyDefinitions.singleResultsFile = {title: "Create Single Results File", description: "Set to false if you want to store the measurement results for each inspection toolpath in a seperate file", group: 0, type: "boolean"};
-propertyDefinitions.useDirectConnection = {title: "Stream Measured Point Data", description: "Set to true to stream inspection results", group: 0, type: "boolean"};
-propertyDefinitions.controlConnectorVersion = {title: "Results connector version", description: "Interface version for direct connection to read inspection results", group: 0, type: "integer"};
 propertyDefinitions.toolOffsetType = {
   title: "Tool offset type",
   description: "Select the which offsets are available on the tool offset page",
@@ -2875,8 +2803,10 @@ propertyDefinitions.toolOffsetType = {
     {id: "geomOnly", title: "Geometry only"}
   ]
 };
-propertyDefinitions.commissioningMode = {title: "Inspection Commissioning Mode", description: "Enables commissioning mode where M0 and messages are output at key points in the program", group: 0, type: "boolean"};
 propertyDefinitions.stopOnInspectionEnd = {title: "Stop on Inspection End", description: "Set to ON to output M0 at the end of each inspection toolpath", group: 0, type: "boolean"};
+// propertyDefinitions.useDirectConnection = {title: "Stream Measured Point Data", description: "Set to true to stream inspection results", group: 0, type: "boolean"};
+// propertyDefinitions.controlConnectorVersion = {title: "Results connector version", description: "Interface version for direct connection to read inspection results", group: 0, type: "integer"};
+// propertyDefinitions.commissioningMode = {title: "Inspection Commissioning Mode", description: "Enables commissioning mode where M0 and messages are output at key points in the program", group: 0, type: "boolean"};
 
 var ijkInspectionFormat = createFormat({decimals:5, forceDecimal:true});
 // inspection variables
@@ -2884,7 +2814,6 @@ var inspectionVariables = {
   localVariablePrefix: "#",
   probeRadius: 0,
   pointNumber: 1,
- 
   inspectionSections: 0,
   inspectionSectionCount: 0,
   workpieceOffset: "",
@@ -2892,71 +2821,73 @@ var inspectionVariables = {
 
 var macroFormat = createFormat({prefix:inspectionVariables.localVariablePrefix, decimals:0});
 
-// function inspectionWriteVariables() {
-//   // loop through all NC stream sections to check for surface inspection
-//   for (var i = 0; i < getNumberOfSections(); ++i) {
-//     var section = getSection(i);
-//     if (isInspectionOperation(section)) {
-//       if (inspectionVariables.inspectionSections == 0) {
-//         if (properties.commissioningMode) {
-//           //sequence numbers cannot be active while commissioning mode is on
-//           properties.showSequenceNumbers = false;
-//         }
-//         inspectionVariables.workpieceOffset = section.workOffset;
-//         var count = 1;
-//         var localVar = properties.probeLocalVar;
-//         var prefix = inspectionVariables.localVariablePrefix;
-//         inspectionVariables.probeRadius = prefix + count;
-//         inspectionVariables.xTarget = prefix + ++count;
-//         inspectionVariables.yTarget = prefix + ++count;
-//         inspectionVariables.zTarget = prefix + ++count;
-//         inspectionVariables.xMeasured = prefix + ++count;
-//         inspectionVariables.yMeasured = prefix + ++count;
-//         inspectionVariables.zMeasured = prefix + ++count;
-//         inspectionVariables.activeToolLength = prefix + ++count;
-//         inspectionVariables.macroVariable1 = prefix + ++count;
-//         inspectionVariables.macroVariable2 = prefix + ++count;
-//         inspectionVariables.macroVariable3 = prefix + ++count;
-//         inspectionVariables.macroVariable4 = prefix + ++count;
+/*
+function inspectionWriteVariables() {
+  // loop through all NC stream sections to check for surface inspection
+  for (var i = 0; i < getNumberOfSections(); ++i) {
+    var section = getSection(i);
+    if (isInspectionOperation(section)) {
+      if (inspectionVariables.inspectionSections == 0) {
+        if (properties.commissioningMode) {
+          //sequence numbers cannot be active while commissioning mode is on
+          properties.showSequenceNumbers = false;
+        }
+        inspectionVariables.workpieceOffset = section.workOffset;
+        var count = 1;
+        var localVar = properties.probeLocalVar;
+        var prefix = inspectionVariables.localVariablePrefix;
+        inspectionVariables.probeRadius = prefix + count;
+        inspectionVariables.xTarget = prefix + ++count;
+        inspectionVariables.yTarget = prefix + ++count;
+        inspectionVariables.zTarget = prefix + ++count;
+        inspectionVariables.xMeasured = prefix + ++count;
+        inspectionVariables.yMeasured = prefix + ++count;
+        inspectionVariables.zMeasured = prefix + ++count;
+        inspectionVariables.activeToolLength = prefix + ++count;
+        inspectionVariables.macroVariable1 = prefix + ++count;
+        inspectionVariables.macroVariable2 = prefix + ++count;
+        inspectionVariables.macroVariable3 = prefix + ++count;
+        inspectionVariables.macroVariable4 = prefix + ++count;
       
-//         inspectionValidateInspectionSettings();
-//         // //inspectionVariables.probeResultsReadPointer = prefix + (properties.probeResultsBuffer + 2);
-//         // inspectionVariables.probeResultsWritePointer = prefix + (properties.probeResultsBuffer + 3);
-//         // inspectionVariables.probeResultsCollectionActive = prefix + (properties.probeResultsBuffer + 4);
-//         // inspectionVariables.probeResultsStartAddress = properties.probeResultsBuffer + 5;
-//         if (properties.toolOffsetType == "geomOnly") {
-//           inspectionVariables.systemVariableOffsetLengthTable = "2000";
-//         }
-//         if (properties.commissioningMode) {
-//           writeBlock("#3006=1(Inspection commissioning mode active,see post properties)");
-//         }
-//         if (properties.useDirectConnection) {
-//           // check to make sure local variables used in results buffer and inspection do not clash
-//           var localStart = properties.probeLocalVar;
-//           var localEnd = count;
-//           var bufferStart = properties.probeResultsBuffer;
-//           var bufferEnd = properties.probeResultsBuffer + ((3 * properties.probeNumberofPoints) + 8);
-//           if ((localStart >= bufferStart && localStart <= bufferEnd) ||
-//             (localEnd >= bufferStart && localEnd <= bufferEnd)) {
-//             error("Local variables defined (" + prefix + localStart + "-" + prefix + localEnd +
-//               ") and live probe results storage area (" + prefix + bufferStart + "-" + prefix + bufferEnd + ") overlap."
-//             );
-//           }
-//           writeBlock(macroFormat.format(properties.probeResultsBuffer) + " = " + properties.controlConnectorVersion);
-//           writeBlock(macroFormat.format(properties.probeResultsBuffer + 1) + " = " + properties.probeNumberofPoints);
-//           writeBlock(inspectionVariables.probeResultsReadPointer + " = 0");
-//           writeBlock(inspectionVariables.probeResultsWritePointer + " = 1");
-//           writeBlock(inspectionVariables.probeResultsCollectionActive + " = 0");
-//           if (properties.probeResultultsBuffer == 0) {
-//             error("Probe Results Buffer start address cannot be zero when using a direct connection.");
-//           }
-//           inspectionWriteFusionConnectorInterface("HEADER");
-//         }
-//       }
-//       inspectionVariables.inspectionSections += 1;
-//     }
-//   }
-// }
+        inspectionValidateInspectionSettings();
+        // //inspectionVariables.probeResultsReadPointer = prefix + (properties.probeResultsBuffer + 2);
+        // inspectionVariables.probeResultsWritePointer = prefix + (properties.probeResultsBuffer + 3);
+        // inspectionVariables.probeResultsCollectionActive = prefix + (properties.probeResultsBuffer + 4);
+        // inspectionVariables.probeResultsStartAddress = properties.probeResultsBuffer + 5;
+        if (properties.toolOffsetType == "geomOnly") {
+          inspectionVariables.systemVariableOffsetLengthTable = "2000";
+        }
+        if (properties.commissioningMode) {
+          writeBlock("#3006=1(Inspection commissioning mode active,see post properties)");
+        }
+        if (properties.useDirectConnection) {
+          // check to make sure local variables used in results buffer and inspection do not clash
+          var localStart = properties.probeLocalVar;
+          var localEnd = count;
+          var bufferStart = properties.probeResultsBuffer;
+          var bufferEnd = properties.probeResultsBuffer + ((3 * properties.probeNumberofPoints) + 8);
+          if ((localStart >= bufferStart && localStart <= bufferEnd) ||
+            (localEnd >= bufferStart && localEnd <= bufferEnd)) {
+            error("Local variables defined (" + prefix + localStart + "-" + prefix + localEnd +
+              ") and live probe results storage area (" + prefix + bufferStart + "-" + prefix + bufferEnd + ") overlap."
+            );
+          }
+          writeBlock(macroFormat.format(properties.probeResultsBuffer) + " = " + properties.controlConnectorVersion);
+          writeBlock(macroFormat.format(properties.probeResultsBuffer + 1) + " = " + properties.probeNumberofPoints);
+          writeBlock(inspectionVariables.probeResultsReadPointer + " = 0");
+          writeBlock(inspectionVariables.probeResultsWritePointer + " = 1");
+          writeBlock(inspectionVariables.probeResultsCollectionActive + " = 0");
+          if (properties.probeResultultsBuffer == 0) {
+            error("Probe Results Buffer start address cannot be zero when using a direct connection.");
+          }
+          inspectionWriteFusionConnectorInterface("HEADER");
+        }
+      }
+      inspectionVariables.inspectionSections += 1;
+    }
+  }
+}
+*/
 
 // adds the necessary references for inspection to the program header
 function addInspectionReferences() {
@@ -2971,25 +2902,17 @@ function hasProgramInspectionOperations() {
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
     if (isInspectionOperation(section)) {
-      
       return true;
     }
   }
   return false;
 }
 
-function inspectionValidateInspectionSettings() {
-  var errorText = "";
-  if (errorText != "") {
-    error(localize("The following properties need to be configured:" + errorText + "\n-Please visit https://forums.autodesk.com/t5/hsm-post-processor-forum/bd-p/218 for more information-"));
-  }
-}
-
 function onProbe(status) {
-  if (status) {// probeON
-    writeBlock("PrepareXyzSensor"); // Command for switching the probe on
+  if (status) {// probe ON
+    writeBlock("PrepareXyzSensor"); // command for switching the probe on
   } else { // probe OFF
-    writeBlock("UnprepareXyzSensor"); // Command for switching the probe off
+    writeBlock("UnprepareXyzSensor"); // command for switching the probe off
   }
 }
 
@@ -3007,11 +2930,11 @@ function inspectionCycleInspect(cycle, epx, epy, epz) {
     return;
   }
 
-  forceFeed(); // ensure feed is always output - just incase.
+  forceFeed(); // ensure feed is always output - just in case.
   if (currentSection.isMultiAxis()) {
-    error("MultiAxisNot Supportetd");
+    error(localize("Multi axis inspect surface is not supported."));
+    return;
   }
-  var f;
 
   var m = getRotation();
   var v = new Vector(cycle.nominalX, cycle.nominalY, cycle.nominalZ);
@@ -3020,7 +2943,7 @@ function inspectionCycleInspect(cycle, epx, epy, epz) {
   var measureDirection = m.multiply(pathVector).normalized.getNegated();
   var searchDistance = cycle.probeClearance;
   
-  //call inspection subprogram
+  // call inspection subprogram
   writeBlock("MeasurePoint(");
   spacingDepth += 1;
   writeBlock("pointID=" + cycle.pointID);
@@ -3035,106 +2958,104 @@ function inspectionCycleInspect(cycle, epx, epy, epz) {
   zOutput.reset();
 }
 
-// create the subprogram that makes the inspection probing  and the output to the result file.
+// create the subprogram that makes the inspection probing and the output to the result file.
 function writeInspectionProgram() {
-  // Not triggered is captured by the NEXT Control
-  inspectProgram = new Array();
+  // not triggered is captured by the NEXT Control
+  var inspectProgram = [
+    "program MeasurePoint pointID:number surfacePos:Position measureDirection:Position searchDistance:number surfaceOffset:number upper:number lower:number",
+    "",
+    "  # measure",
+    "  measureResult = GetMeasuringResultCompensation(",
+    "    ArrangeMeasuring(",
+    "    targetPosition=surfacePos",
+    "    direction=measureDirection",
+    "    distance=searchDistance),",
+    "  AxisSystem::GetRcsMatrix)",
+    "",
+    "  # Trigger not found",
+    "  if measureResult.active == false",
+    "    Dialog message=\"Target Point not found\" caption=\"Inspection error\" Error",
+    "  endif",
+    "",
 
-  inspectProgram.push("program MeasurePoint pointID:number surfacePos:Position measureDirection:Position searchDistance:number surfaceOffset:number upper:number lower:number\r\n");
-  inspectProgram.push("\t\r\n");
-  inspectProgram.push("\t# measure\r\n");
-  inspectProgram.push("\tmeasureResult = GetMeasuringResultCompensation(\r\n");
-  inspectProgram.push("\t\tArrangeMeasuring(\r\n");
-  inspectProgram.push("\t\t\ttargetPosition=surfacePos\r\n");
-  inspectProgram.push("\t\t\tdirection=measureDirection\r\n");
-  inspectProgram.push("\t\t\tdistance=searchDistance),\r\n");
-  inspectProgram.push("\t\t AxisSystem::GetRcsMatrix)\r\n");
-  inspectProgram.push("\t\t\r\n");
+    "  # write nominal values",
+    "  measureNominalString = StringFormat(",
+    "    baseString=\"G800 N{0} X{1:f3} Y{2:f3} Z{3:f3} I{4:f3} J{5:f3} K{6:f3} O{7:f5} U{8:f3} L{9:f3}\"",
+    "    p0=pointID  ",
+    "    p1=surfacePos.X",
+    "    p2=surfacePos.Y",
+    "    p3=surfacePos.Z",
+    "    p4=measureDirection.X * -1",
+    "    p5=measureDirection.Y * -1",
+    "    p6=measureDirection.Z * -1",
+    "    p7=surfaceOffset",
+    "    p8=upper",
+    "    p9=lower)  ",
+    "  measureNominalString = StringReplace(measureNominalString, \",\", \".\")        ",
+    "  FileWriteLine filename=InspectionFilename value=measureNominalString",
+    "",
 
-  inspectProgram.push("\t# Trigger not found \r\n");
-  inspectProgram.push("\tif  measureResult.active == false\r\n");
-  inspectProgram.push("\t\tDialog message=\"Target Point not found\" caption=\"Inspection error\" Error\r\n");
-  inspectProgram.push("\tendif\r\n");
-  inspectProgram.push("\r\n");
-  
-  inspectProgram.push("\t# write nominal values\r\n");
-  inspectProgram.push("\tmeasureNominalString = StringFormat(\r\n");
-  inspectProgram.push("\t\tbaseString=\"G800 N{0} X{1:f3} Y{2:f3} Z{3:f3} I{4:f3} J{5:f3} K{6:f3} O{7:f5} U{8:f3} L{9:f3}\"\r\n");
-  inspectProgram.push("\t\tp0=pointID  \r\n");
-  inspectProgram.push("\t\tp1=surfacePos.X\r\n");
-  inspectProgram.push("\t\tp2=surfacePos.Y\r\n");
-  inspectProgram.push("\t\tp3=surfacePos.Z\r\n");
-  inspectProgram.push("\t\tp4=measureDirection.X * -1\r\n");
-  inspectProgram.push("\t\tp5=measureDirection.Y * -1\r\n");
-  inspectProgram.push("\t\tp6=measureDirection.Z * -1\r\n");
-  inspectProgram.push("\t\tp7=surfaceOffset\r\n");
-  inspectProgram.push("\t\tp8=upper\r\n");
-  inspectProgram.push("\t\tp9=lower)  \r\n");
-  inspectProgram.push("\tmeasureNominalString = StringReplace(measureNominalString, \",\", \".\")        \r\n");
-  inspectProgram.push("\tFileWriteLine filename=InspectionFilename value=measureNominalString\r\n");
-  inspectProgram.push("\t\r\n");
+    "  # write result values",
+    "  measureResultString = StringFormat(",
+    "    baseString=\"G801 N{0} X{1:f3} Y{2:f3} Z{3:f3} R{4:f3}\"",
+    "    p0=pointID",
+    "    p1=measureResult.measuredPoint.X",
+    "    p2=measureResult.measuredPoint.Y",
+    "    p3=measureResult.measuredPoint.Z",
+    "    p4=GetProbeTipRadius())",
+    "  measureResultString = StringReplace(measureResultString, \",\", \".\")",
+    "",
 
-  inspectProgram.push("\t# write result values\r\n");
-  inspectProgram.push("\tmeasureResultString = StringFormat(\r\n");
-  inspectProgram.push("\t\tbaseString=\"G801 N{0} X{1:f3} Y{2:f3} Z{3:f3} R{4:f3}\"\r\n");
-  inspectProgram.push("\t\tp0=pointID\r\n");
-  inspectProgram.push("\t\tp1=measureResult.measuredPoint.X\r\n");
-  inspectProgram.push("\t\tp2=measureResult.measuredPoint.Y\r\n");
-  inspectProgram.push("\t\tp3=measureResult.measuredPoint.Z\r\n");
-  inspectProgram.push("\t\tp4=GetProbeTipRadius())\r\n");
-  inspectProgram.push("\tmeasureResultString = StringReplace(measureResultString, \",\", \".\")\r\n");
-  inspectProgram.push("\r\n");
-  inspectProgram.push("\tFileWriteLine filename=InspectionFilename value=measureResultString\r\n");
-  inspectProgram.push("\t\r\n");
+    "FileWriteLine filename=InspectionFilename value=measureResultString",
+    "",
+    "  # check result",
+    "  measuredPosition = NewPos(",
+    "    measureResult.measuredPoint.X,",
+    "    measureResult.measuredPoint.Y,",
+    "    measureResult.measuredPoint.Z)",
+    "",
+    "  measuredDifferenceVector = SubPosition(surfacePos, measuredPosition)",
+    "  deltaDirection = Normalize(measuredDifferenceVector)",
+    "  distance = GetPositionDistance(measuredDifferenceVector)",
+    "",
+    "  # check deviation direction",
+    "  if(GetPositionDistance(SubPosition(Normalize(measuredDifferenceVector),measureDirection))>1)",
+    "    distance = distance * -1",
+    "  endif",
+    "",
+    "  if(distance > lower and distance < upper)",
+    "    return",
+    "  endif",
+    "",
+    "  # Position out of tolerance",
+    "  Dialog message=\"Position out of tolerance\" caption=\"Position out of tolerance\" Error",
+    "",
+    "endprogram"
+  ];
 
-  inspectProgram.push("\t# check result\r\n");
-  inspectProgram.push("\tmeasuredPosition = NewPos(\r\n");
-  inspectProgram.push("\t\tmeasureResult.measuredPoint.X,\r\n");
-  inspectProgram.push("\t\tmeasureResult.measuredPoint.Y,\r\n");
-  inspectProgram.push("\t\tmeasureResult.measuredPoint.Z)\r\n");
-  inspectProgram.push("\t\r\n");
-  inspectProgram.push("\tmeasuredDifferenceVector = SubPosition(surfacePos, measuredPosition)\r\n");
-  inspectProgram.push("\tdeltaDirection = Normalize(measuredDifferenceVector)\r\n");
-  inspectProgram.push("\tdistance = GetPositionDistance(measuredDifferenceVector)\r\n");
-  inspectProgram.push("\t\r\n");
-  inspectProgram.push("\t# check deviation direction\r\n");
-  inspectProgram.push("\tif(GetPositionDistance(SubPosition(Normalize(measuredDifferenceVector),measureDirection))>1)\r\n");
-  inspectProgram.push("\t\tdistance = distance * -1\r\n");
-  inspectProgram.push("\tendif\r\n");
-  inspectProgram.push("\t\r\n");
-  inspectProgram.push("\tif(distance > lower and distance < upper)\r\n");
-  inspectProgram.push("\t\treturn\r\n");
-  inspectProgram.push("\tendif\r\n");
-  inspectProgram.push("\t  \r\n");
-
-  inspectProgram.push("\t# Position out of tolerance\r\n");
-  inspectProgram.push("\tDialog message=\"Position out of tolerance\" caption=\"Position out of tolerance\" Error\r\n");
-  inspectProgram.push("\r\n");
-
-  inspectProgram.push("endprogram\r\n");
-
-  inspectProgramOperation = {operationProgram: inspectProgram};
-
+  inspectProgramOperation = {operationProgram: inspectProgram.join(EOL)};
   SimPLProgram.operationList.push(inspectProgramOperation);
 }
 
-// function inspectionWriteFusionConnectorInterface(ncSection) {
-//   if (ncSection == "MEASURE") {
-//     writeBlock("IF " + inspectionVariables.probeResultsCollectionActive + " NE 1 GOTO " + inspectionVariables.pointNumber);
-//     writeBlock("WHILE [" + inspectionVariables.probeResultsReadPointer + " EQ " + inspectionVariables.probeResultsWritePointer + "] DO 1");
-//     onDwell(0.5);
-//     writeComment("WAITING FOR FUSION CONNECTION");
-//     writeBlock("G53");
-//     writeBlock("END 1");
-//     writeBlock("N" + inspectionVariables.pointNumber);
-//   } else {
-//     writeBlock("WHILE [" + inspectionVariables.probeResultsCollectionActive + " NE 1] DO 1");
-//     onDwell(0.5);
-//     writeComment("WAITING FOR FUSION CONNECTION");
-//     writeBlock("G53");
-//     writeBlock("END 1");
-//   }
-// }
+/*
+function inspectionWriteFusionConnectorInterface(ncSection) {
+  if (ncSection == "MEASURE") {
+    writeBlock("IF " + inspectionVariables.probeResultsCollectionActive + " NE 1 GOTO " + inspectionVariables.pointNumber);
+    writeBlock("WHILE [" + inspectionVariables.probeResultsReadPointer + " EQ " + inspectionVariables.probeResultsWritePointer + "] DO 1");
+    onDwell(0.5);
+    writeComment("WAITING FOR FUSION CONNECTION");
+    writeBlock("G53");
+    writeBlock("END 1");
+    writeBlock("N" + inspectionVariables.pointNumber);
+  } else {
+    writeBlock("WHILE [" + inspectionVariables.probeResultsCollectionActive + " NE 1] DO 1");
+    onDwell(0.5);
+    writeComment("WAITING FOR FUSION CONNECTION");
+    writeBlock("G53");
+    writeBlock("END 1");
+  }
+}
+*/
 
 function inspectionProcessSectionStart() {
   // only write header once if user selects a single results file
@@ -3181,13 +3102,13 @@ function addModuleReference(value) {
 }
 
 function inspectionCreateResultsFileHeader() {
-  // Add the filename to the global variables declarations
+  // add the filename to the global variables declarations
   addVariable("InspectionFilename:string");
 
   writeBlock("InspectionFilename = \"" + getInspectionFilename() + "\"");
   writeComment("delete existing old file");
   writeBlock("if FileExists filename=InspectionFilename");
-  writeBlock("\tFileDelete filename=InspectionFilename");
+  writeBlock("  FileDelete filename=InspectionFilename");
   writeBlock("endif");
 
   writeBlock("");
@@ -3239,8 +3160,7 @@ function inspectionProcessSectionEnd() {
   if (isInspectionOperation(currentSection)) {
     // close inspection results file if the NC has inspection toolpaths
     if ((!properties.singleResultsFile) || (inspectionVariables.inspectionSectionCount == inspectionVariables.inspectionSections)) {
- 
-      // TODO comisioning mode einfügen
+      // TODO add commisioning mode
     }
     writeBlock("FileWriteLine filename=InspectionFilename value=\"END\"");
     writeBlock(properties.stopOnInspectionEnd == true ? "Dialog message=\"Finish Inspection\" Yes No caption=\"Inspection\" Info" : "");
