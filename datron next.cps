@@ -556,8 +556,8 @@ function writeProgramHeader() {
   SimPLProgram.toolDescriptionList =  createToolDescriptionTable();
 
   // set the workpiece information
+  // TODO anapssen das es wieder geposted wird
   SimPLProgram.workpieceGeometry = writeWorkpiece();
-
   // set the sequence header in the program file
   if (properties.useSequences) {
     var sequences = new Array();
@@ -2765,10 +2765,14 @@ function onSectionEnd() {
 }
 
 function writeBuffer(buffer) {
+
   if (buffer.length > 0) {
     writeBlock(buffer.join("\r\n") + "\r\n");
     writeBlock("");
+    return;
   }
+
+  writeBlock(buffer);
 }
 
 function onClose() {
