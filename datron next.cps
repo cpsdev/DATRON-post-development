@@ -1307,7 +1307,7 @@ function onSection() {
       writeBlock("SetFeedTechnology plunge=" + feedFormat.format(getParameter("movement:plunge")));
       break;
   case "chip-breaking":
-      writeBlock("SetFeedTechnology plunge=" + feedFormat.format(getParameter("movement:plunge")) + " roughing=" + feedFormat.format(getParameter("movement:cutting")));
+      writeBlock("SetFeedTechnology plunge=" + feedFormat.format(getParameter("movement:plunge")) + " roughing=" + feedFormat.format(getParameter("movement:plunge")));
       writeBlock("infeedZ = " + dimensionFormat.format(currentSection.getParameter("incrementalDepth")));
       sequenceParamter.push("infeedZ=infeedZ");
       break;
