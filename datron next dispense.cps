@@ -22,7 +22,7 @@ longDescription = "Post for Datron next control. This post is for use with the D
 extension = "simpl";
 setCodePage("utf-8");
 
-capabilities = CAPABILITY_JET;
+capabilities = CAPABILITY_JET || CAPABILITY_MILLING;
 tolerance = spatial(0.002, MM);
 
 minimumChordLength = spatial(0.25, MM);
@@ -64,6 +64,8 @@ properties = {
   rampLength: 40,
   rampZBindingDepth: 1, 
   useClosedContour:true,
+  leaveZOffset: 1,
+  leaveLength: 10,
 };
 
  
@@ -586,7 +588,7 @@ function writeProgramHeader() {
 
   // set usings 
   SimPLProgram.usingList.push("using Base");
-  SimPLProgram.usingList.push("using DispensingCycles");
+  SimPLProgram.usingList.push("using Dispensing");
   
   if ((properties.got5thAxis || properties.got4thAxis) && properties.useRtcp){
     SimPLProgram.usingList.push("using Rtcp");
@@ -623,8 +625,8 @@ function writeProgramHeader() {
   spacingDepth += 1;
   writeBlock("Absolute");
 
-  writeBlock("DispensingTechnology P=1 D=0.025");
-  writeBlock("DispensingVolume crossSection=2");
+  writeBlock("ExtruderTechnology P=1 D=0.025");
+  writeBlock("CrossSection crossSection=2");
   writeBlock("");
 
   
@@ -1777,7 +1779,8 @@ function onCommand(command) {
         writeBlock("BeginClosedContour rampLength=rampLength zBindingDepth=zBindingDepth");
       }
       if(command == COMMAND_POWER_OFF ){
-        writeBlock("EndClosedContour");
+        closeContourCommand = "EndClosedContour leaveZOffset=" + properties.leaveZOffset + " leaveLength=" + properties.leaveLength;
+        writeBlock(closeContourCommand);
       }
     }else{   
       if(command == COMMAND_POWER_ON ){
