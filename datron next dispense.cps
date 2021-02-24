@@ -61,11 +61,13 @@ properties = {
   preloadTool: false, //prepare a Tool for the DATROn tool assist
   writePathOffset:true, //write the definition for the PathOffset variable for every Operation
   useRtcp:false,
-  rampLength: 40,
-  rampZBindingDepth: 1, 
-  useClosedContour:true,
-  leaveZOffset: 1,
-  leaveLength: 10,
+  _rampLength: 40,
+  _rampZBindingDepth: 1, 
+  _useClosedContour:true,
+  _leaveZOffset: 1,
+  _leaveLength: 10,
+  _leaveZOffset:0.25,
+  _leaveLength:10,
 };
 
  
@@ -1218,9 +1220,10 @@ function onSection() {
     SimPLProgram.globalVariableList.push("rampLength:number");
     SimPLProgram.globalVariableList.push("zBindingDepth:number");
    
-    writeBlock("rampLength = " + properties.rampLength);
-    writeBlock("zBindingDepth = " + properties.rampZBindingDepth);
-
+    writeBlock("rampLength = " + properties._rampLength);
+    writeBlock("zBindingDepth = " + properties._rampZBindingDepth);
+    writeBlock("leaveZOffset = " + properties._leaveZOffset); 
+    writeBlock("leaveLength = " + properties._leaveLength);
 
     // set the current feed
     // replace by the default feed command
@@ -1330,6 +1333,8 @@ function onSection() {
   if (properties.useSequences && !isProbeOperation(currentSection)) {
     sequenceParamter.push("rampLength=rampLength");
     sequenceParamter.push("zBindingDepth=zBindingDepth");
+    sequenceParamter.push("leaveZOffset=leaveZOffset");
+    sequenceParamter.push("leaveLength=leaveLength");
 
     // call sequence
     if (properties.useParametricFeed && (!useDatronFeedCommand) && !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
@@ -1774,12 +1779,12 @@ function onCommand(command) {
   if (mcode != undefined) {
     writeBlock(mFormat.format(mcode));
   } else {
-    if(properties.useClosedContour){
+    if(properties._useClosedContour){
       if(command == COMMAND_POWER_ON ){
         writeBlock("BeginClosedContour rampLength=rampLength zBindingDepth=zBindingDepth");
       }
       if(command == COMMAND_POWER_OFF ){
-        closeContourCommand = "EndClosedContour leaveZOffset=" + properties.leaveZOffset + " leaveLength=" + properties.leaveLength;
+        closeContourCommand = "EndClosedContour leaveZOffset=leaveZOffset leaveLength=leaveLength";
         writeBlock(closeContourCommand);
       }
     }else{   
