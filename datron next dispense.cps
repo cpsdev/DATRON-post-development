@@ -627,11 +627,10 @@ function writeProgramHeader() {
   spacingDepth += 1;
   writeBlock("Absolute");
 
-  writeBlock("ExtruderTechnology P=1 D=0.025");
-  writeBlock("CrossSection crossSection=2");
+  writeBlock("ExtruderTechnology P=1.8 D=10 D_2=10");
+  writeBlock("CrossSection crossSection=10");
   writeBlock("");
 
-  
   // set the parameter tool table
   SimPLProgram.globalVariableList.push(createToolVariables());
 
