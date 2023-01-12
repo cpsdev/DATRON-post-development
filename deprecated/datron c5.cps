@@ -1,5 +1,5 @@
 /**
-  Copyright (C) 2012-2021 by Autodesk, Inc.
+  Copyright (C) 2012-2017 by Autodesk, Inc.
   All rights reserved.
 
   DATRON post processor configuration.
@@ -13,9 +13,9 @@
 description = "DATRON C5";
 vendor = "DATRON";
 vendorUrl = "http://www.datron.com";
-legal = "Copyright (C) 2012-2021 by Autodesk, Inc.";
+legal = "Copyright (C) 2012-2017 by Autodesk, Inc.";
 certificationLevel = 2;
-minimumRevision = 45702;
+minimumRevision = 24000;
 
 longDescription = "Post for DATRON C5.";
 
@@ -25,7 +25,7 @@ setCodePage("ascii");
 capabilities = CAPABILITY_MILLING;
 tolerance = spatial(0.002, MM);
 
-minimumChordLength = spatial(0.25, MM);
+minimumChordLength = spatial(0.01, MM);
 minimumCircularRadius = spatial(0.01, MM);
 maximumCircularRadius = spatial(1000, MM);
 minimumCircularSweep = toRad(0.01);
@@ -36,94 +36,16 @@ mapWorkOrigin = false;
 
 // user-defined properties
 properties = {
-  writeMachine: {
-    title      : "Write machine",
-    description: "Output the machine settings in the header of the code.",
-    group      : "formats",
-    type       : "boolean",
-    value      : true,
-    scope      : "post"
-  },
-  writeVersion: {
-    title      : "Write version",
-    description: "Write the version number in the header of the code.",
-    group      : "formats",
-    type       : "boolean",
-    value      : false,
-    scope      : "post"
-  },
-  showOperationDialog: {
-    title      : "Show operation dialog",
-    description: "Shows a start dialog on the control which allows you to select the operation to start with.",
-    group      : "preferences",
-    type       : "boolean",
-    value      : true,
-    scope      : "post"
-  },
-  useParametricFeed: {
-    title      : "Parametric feed",
-    description: "Specifies the feed value that should be output using a Q value.",
-    group      : "preferences",
-    type       : "boolean",
-    value      : true,
-    scope      : "post"
-  },
-  showNotes: {
-    title      : "Show notes",
-    description: "Writes operation notes as comments in the outputted code.",
-    group      : "formats",
-    type       : "boolean",
-    value      : false,
-    scope      : "post"
-  },
-  useSmoothing: {
-    title      : "Use smoothing",
-    description: "Specifies if smoothing should be used or not.",
-    group      : "preferences",
-    type       : "boolean",
-    value      : true,
-    scope      : "post"
-  },
-  useDynamic: {
-    title      : "Dynamic mode",
-    description: "Specifies the using of dynamic mode or not.",
-    group      : "preferences",
-    type       : "boolean",
-    value      : true,
-    scope      : "post"
-  },
-  useTimeStamp: {
-    title      : "Time stamp",
-    description: "Specifies whether to output a time stamp.",
-    group      : "preferences",
-    type       : "boolean",
-    value      : false,
-    scope      : "post"
-  },
-  useCoolant: {
-    title      : "Write coolant commands",
-    description: "Enable/disable coolant code outputs for the entire program.",
-    group      : "preferences",
-    type       : "boolean",
-    value      : false,
-    scope      : "post"
-  }
+  writeMachine: true, // write machine
+  writeVersion: false, // include version info
+  showOperationDialog: true, // shows a start dialog on the control to select the operation to start with
+  useParametricFeed: true, // specifies that feed should be output using Q values
+  showNotes: false, // specifies that operation notes should be output
+  useSmoothing: true, // specifies if smoothing should be used or not
+  useDynamic: true, // specifies using dynamic mode or not
+  useTimeStamp: false, // specifies to output time stamp
+  writeCoolantCommands: false // en/disable coolant code output for the entire program
 };
-
-// samples:
-// {id: COOLANT_THROUGH_TOOL, on: 88, off: 89}
-// {id: COOLANT_THROUGH_TOOL, on: [8, 88], off: [9, 89]}
-var coolants = [
-  {id:COOLANT_FLOOD, on:1},
-  {id:COOLANT_MIST, on:1},
-  {id:COOLANT_THROUGH_TOOL},
-  {id:COOLANT_AIR, on:3},
-  {id:COOLANT_AIR_THROUGH_TOOL},
-  {id:COOLANT_SUCTION},
-  {id:COOLANT_FLOOD_MIST},
-  {id:COOLANT_FLOOD_THROUGH_TOOL},
-  {id:COOLANT_OFF, off:2}
-];
 
 var mFormat = createFormat({prefix:"M", width:2, zeropad:true, decimals:1});
 
@@ -139,7 +61,7 @@ var workpieceFormat = createFormat({decimals:(unit == MM ? 3 : 4), forceSign:tru
 
 var xOutput = createVariable({force:true}, xyzFormat);
 var yOutput = createVariable({force:true}, xyzFormat);
-var zOutput = createVariable({onchange:function () {retracted = false;}, force:true}, xyzFormat);
+var zOutput = createVariable({force:true}, xyzFormat);
 var aOutput = createVariable({force:true}, abcFormat);
 var bOutput = createVariable({force:true}, abcFormat);
 var cOutput = createVariable({force:true}, abcFormat);
@@ -149,8 +71,7 @@ var sOutput = createVariable({prefix:"S", force:true}, rpmFormat);
 var gMotionModal = createModal({prefix:"Axyz ", force:true, suffix:","}, xyzFormat); // modal group 1 // G0-G3, ...
 
 // fixed settings
-var language = "en"; // supported languages are: "en", "de"
-var allowIndexingWCSProbing = false; // specifies that probe WCS with tool orientation is supported
+var language = "de"; // supported languages are: "en", "de"
 
 // collected state
 var currentWorkOffset;
@@ -160,10 +81,9 @@ var forceSpindleSpeed = false;
 var activeMovements; // do not use by default
 var currentFeedId;
 var containsProbingOperations = false;
-var retracted = false; // specifies that the tool has been retracted to the safe plane
 
 // format date + time
-var timeFormat = createFormat({decimals:0, width:2, zeropad:true});
+var timeFormat = createFormat({decimals:0, force:true, width:2, zeropad:true});
 var now = new Date();
 var nowDay = now.getDate();
 var nowMonth = now.getMonth() + 1;
@@ -179,14 +99,14 @@ function writeBlock() {
 }
 
 var charMap = {
-  "\u00c4": "Ae",
-  "\u00e4": "ae",
-  "\u00dc": "Ue",
-  "\u00fc": "ue",
-  "\u00d6": "Oe",
-  "\u00f6": "oe",
-  "\u00df": "ss",
-  "\u002d": "_"
+  "\u00c4":"Ae",
+  "\u00e4":"ae",
+  "\u00dc":"Ue",
+  "\u00fc":"ue",
+  "\u00d6":"Oe",
+  "\u00f6":"oe",
+  "\u00df":"ss",
+  "\u002d":"_"
 };
 
 /** Map specific chars. */
@@ -289,7 +209,7 @@ function writeProgramHeader() {
   var date =  timeFormat.format(nowDay) + "." + timeFormat.format(nowMonth) + "." + now.getFullYear();
   var time = timeFormat.format(nowHour) + ":" + timeFormat.format(nowMin);
 
-  if (getProperty("useTimeStamp")) {
+  if (properties.useTimeStamp) {
     writeBlock("!Makro file ; generated at " + date + " - " + time + " V9.85D!");
   } else {
     writeBlock("!Makro file ; V9.85D!");
@@ -328,14 +248,14 @@ function writeProgramHeader() {
   var variablesDeclaration = new Array();
   var submacrosDeclaration = new Array();
   var dialogsDeclaration = new Array();
-
-  if (getProperty("showOperationDialog")) {
+  
+  if (properties.showOperationDialog) {
     variablesDeclaration.push("optional_stop");
   }
   variablesDeclaration.push("$Message");
 
   dialogsDeclaration.push("_maske _haupt, " + "1000" + ", 0, " + "\"" + translate("Submacro") + " " + translate("Description") + "\"");
-  if (getProperty("showOperationDialog")) {
+  if (properties.showOperationDialog) {
     dialogsDeclaration.push("_feld optional_stop, 1, 0, 0, 0, 1, 2, 0," + " \"" + "optional_stop" + "\"" + "," + " \"" + "optional_stop" + "\"");
   }
 
@@ -347,22 +267,22 @@ function writeProgramHeader() {
   }
 
   var numberOfSections = getNumberOfSections();
-  if (getProperty("showOperationDialog")) {
+  if (properties.showOperationDialog) {
     var dropDownElements = new Array();
     variablesDeclaration.push("startOperation");
   }
-
+  
   var dropDownDialog = "_feld startOperation, 1, 0, 1, 0, 9999, 1, 0, \"Startoperation <";
-
+ 
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
     var sectionID = i + 1;
     variablesDeclaration.push("Op_" + formatVariable(getOperationDescription(section)));
     submacrosDeclaration.push("Sm_" + formatVariable(getOperationDescription(section)));
-    if (getProperty("showOperationDialog")) {
+    if (properties.showOperationDialog) {
       dropDownElements.push(formatVariable(getOperationDescription(section)) + "<" + sectionID + ">");
     }
-    if (getProperty("useParametricFeed")) {
+    if (properties.useParametricFeed) {
       activeFeeds = initializeActiveFeeds(section);
       for (var j = 0; j < activeFeeds.length; ++j) {
         var feedContext = activeFeeds[j];
@@ -373,8 +293,8 @@ function writeProgramHeader() {
       }
     }
   }
-
-  if (getProperty("showOperationDialog")) {
+  
+  if (properties.showOperationDialog) {
     dropDownDialog += dropDownElements.join(", ");
     dropDownDialog += ">\", \"Select the operation to start with. \"";
     dialogsDeclaration.push(dropDownDialog);
@@ -421,7 +341,7 @@ function writeMainProgram() {
   for (var i = 0; i < numberOfSections; ++i) {
     var section = getSection(i);
     var Description = getOperationDescription(section);
-    var sectionID = i + 1;
+    var sectionID = i+1;
 
     var sectionName = formatVariable("Sm_" + Description);
     var maskName = formatVariable("Op_" + Description);
@@ -431,7 +351,7 @@ function writeMainProgram() {
     writeBlock(translate("Label") + " " + sectionID + ";");
 
     var tool = section.getTool();
-    if (getProperty("showNotes") && section.hasParameter("notes")) {
+    if (properties.showNotes && section.hasParameter("notes")) {
       var notes = section.getParameter("notes");
       if (notes) {
         var lines = String(notes).split("\n");
@@ -459,7 +379,10 @@ function writeMainProgram() {
     }
     if (!isProbeOperation(section)) {
       writeBlock(translate("Tool") + " T" + (tool.number) + ", 0, 0, 1, 0;");
-      writeBlock(translate("Rpm") + " 3, " + rpmFormat.format((section.getInitialSpindleSpeed() < 6000) ? 6000 : section.getInitialSpindleSpeed()) + ", 0, 30;");
+      if (tool.spindleRPM < 6000) {
+        tool.spindleRPM = 6000;
+      }
+      onSpindleSpeed(tool.spindleRPM);
     }
 
     // set coolant after we have positioned at Z
@@ -468,7 +391,7 @@ function writeMainProgram() {
     if (section.hasParameter("operation:tolerance")) {
       t = section.getParameter("operation:tolerance");
     }
-    if (getProperty("useDynamic")) {
+    if (properties.useDynamic) {
       var dynamic = 5;
       if (t <= 0.02) {
         dynamic = 4;
@@ -484,7 +407,7 @@ function writeMainProgram() {
       }
       writeBlock(translate("Dynamics")  + " " + dynamic + ";");
     }
-    if (getProperty("useParametricFeed")) {
+    if (properties.useParametricFeed) {
       activeFeeds = initializeActiveFeeds(section);
       for (var j = 0; j < activeFeeds.length; ++j) {
         var feedContext = activeFeeds[j];
@@ -492,7 +415,7 @@ function writeMainProgram() {
       }
     }
 
-    /*
+/*
     // wcs
     var workOffset;
     if (!is3D()) {
@@ -587,6 +510,7 @@ function initializeActiveFeeds(section) {
   var movements = section.getMovements();
 
   var id = 0;
+
 
   if (section.hasParameter("operation:tool_feedCutting")) {
     if (movements & ((1 << MOVEMENT_CUTTING) | (1 << MOVEMENT_LINK_TRANSITION) | (1 << MOVEMENT_EXTENDED))) {
@@ -693,17 +617,10 @@ function initializeActiveFeeds(section) {
     ++id;
   }
   if (true) { // high feed
-    if ((movements & (1 << MOVEMENT_HIGH_FEED)) || (highFeedMapping != HIGH_FEED_NO_MAPPING)) {
-      var feed;
-      if (hasParameter("operation:highFeedrateMode") && getParameter("operation:highFeedrateMode") != "disabled") {
-        feed = getParameter("operation:highFeedrate");
-      } else {
-        feed = this.highFeedrate;
-      }
-      var feedContext = new FeedContext(id, localize("High Feed"), feed);
+    if (movements & (1 << MOVEMENT_HIGH_FEED)) {
+      var feedContext = new FeedContext(id, localize("High Feed"), this.highFeedrate);
       activeFeeds.push(feedContext);
       activeMovements[MOVEMENT_HIGH_FEED] = feedContext;
-      activeMovements[MOVEMENT_RAPID] = feedContext;
     }
     ++id;
   }
@@ -735,21 +652,21 @@ function setWorkPlane(abc, turn) {
   }
 
   gMotionModal.reset();
-
+  
   var st = turn ? 1 : 0;
   // move origin
   var initialPosition = getFramePosition((currentSection.getInitialPosition()));
   var xv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.x : currentSection.workOrigin.x) : xyzFormat.format(0);
   var yv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.y : currentSection.workOrigin.y) : xyzFormat.format(0);
   var zv = turn ? xyzFormat.format(currentSection.isMultiAxis() ? initialPosition.z : currentSection.workOrigin.z) : xyzFormat.format(0);
-
+  
   // rotate workplane and axis
   var xs = abcFormat.format(abc.x);
   var ys = abcFormat.format(abc.y);
   var zs = abcFormat.format(abc.z);
   var wz = turn ? 0 : 2; // 0 = indexing with retract 1= indexing with moving tool 2 = coordinate system rotation only
   var vr = feedFormat.format(10000); // feed for indexing
-
+  
   if (turn) {
     writeBlock(translate("Shift") + " " + st + ", " + xv + ", " + yv + ", " + zv + ";");
     writeBlock(translate("Tilt") + " " + st + ", " + xs + ", " + ys + ", " + zs + ", " + wz + ", " + vr + ";");
@@ -831,26 +748,24 @@ function onSection() {
     currentSection.getForceToolChange && currentSection.getForceToolChange() ||
     (tool.number != getPreviousSection().getTool().number);
 
-  retracted = false;
+  var retracted = false; // specifies that the tool has been retracted to the safe plane
   var newWorkOffset = isFirstSection() ||
     (getPreviousSection().workOffset != currentSection.workOffset); // work offset changes
   var newWorkPlane = isFirstSection() ||
-    !isSameDirection(getPreviousSection().getGlobalFinalToolAxis(), currentSection.getGlobalInitialToolAxis()) ||
-    (currentSection.isOptimizedForMachine() && getPreviousSection().isOptimizedForMachine() &&
-      Vector.diff(getPreviousSection().getFinalToolAxisABC(), currentSection.getInitialToolAxisABC()).length > 1e-4) ||
-    (!machineConfiguration.isMultiAxisConfiguration() && currentSection.isMultiAxis()) ||
-    (!getPreviousSection().isMultiAxis() && currentSection.isMultiAxis() ||
-      getPreviousSection().isMultiAxis() && !currentSection.isMultiAxis()); // force newWorkPlane between indexing and simultaneous operations
+    !isSameDirection(getPreviousSection().getGlobalFinalToolAxis(), currentSection.getGlobalInitialToolAxis());
+
   writeBlock("(");
 
   if (insertToolCall || newWorkOffset || newWorkPlane) {
     // retract to safe plane
+    retracted = true;
     writeBlock(translate("ToolRetraction") + ";");
     forceXYZ();
   }
 
   if (insertToolCall) {
     forceWorkPlane();
+    retracted = true;
 
     if (tool.number > 99) {
       warning(localize("Tool number exceeds maximum value."));
@@ -860,11 +775,14 @@ function onSection() {
   if (insertToolCall ||
       forceSpindleSpeed ||
       isFirstSection() ||
-      (rpmFormat.areDifferent(spindleSpeed, sOutput.getCurrent())) ||
+      (rpmFormat.areDifferent(tool.spindleRPM, sOutput.getCurrent())) ||
       (tool.clockwise != getPreviousSection().getTool().clockwise)) {
     forceSpindleSpeed = false;
 
-    if (spindleSpeed > 60000) {
+    if (tool.spindleRPM < 6000) {
+      tool.spindleRPM = 6000;
+    }
+    if (tool.spindleRPM > 60000) {
       warning(localize("Spindle speed exceeds maximum value."));
     }
     if (!tool.clockwise) {
@@ -882,7 +800,7 @@ function onSection() {
       forceWorkPlane();
       cancelTransformation();
       if (!retracted) {
-        writeRetract(Z);
+        writeBlock(translate("ToolRetraction") + ";");
       }
     } else {
       var eulerXYZ = currentSection.workPlane.getTransposed().eulerZYX_R;
@@ -918,14 +836,14 @@ function onSection() {
       t = getParameter("operation:tolerance");
     }
   }
-  if (getProperty("useSmoothing") && !isProbeOperation(currentSection)) {
+  if (properties.useSmoothing && !isProbeOperation(currentSection)) {
     writeBlock(translate("Contour_smoothing") + " 1, " + xyzFormat.format(t * 1.2) + ", 0.1, 110, 1;");
   }
 
   var initialPosition = getFramePosition(currentSection.getInitialPosition());
   if (!retracted) {
     if (getCurrentPosition().z < initialPosition.z) {
-      writeRetract(Z);
+      writeBlock(translate("ToolRetraction") + ";");
     }
   }
 
@@ -947,7 +865,7 @@ function onSection() {
     writeBlock(gMotionModal.format(1), xOutput.format(initialPosition.x) + ", " + yOutput.format(initialPosition.y) + ", " + zOutput.format(initialPosition.z) + ", 0, 0;");
   }
 
-  if (getProperty("useParametricFeed") /*&&
+  if (properties.useParametricFeed /*&&
       hasParameter("operation-strategy") &&
       (getParameter("operation-strategy") != "drill")*/ &&
       !(currentSection.hasAnyCycle && currentSection.hasAnyCycle())) {
@@ -969,7 +887,7 @@ function onDwell(seconds) {
 }
 
 function onSpindleSpeed(spindleSpeed) {
-  writeBlock(translate("Rpm") + " 3, " + rpmFormat.format((spindleSpeed < 6000) ? 6000 : spindleSpeed) + ", 0, 30;");
+  writeBlock(translate("Rpm") + " 3, " + rpmFormat.format(spindleSpeed) + ", 0, 30;");
 }
 
 function onCycle() {
@@ -982,20 +900,9 @@ function approach(value) {
 }
 
 function onCyclePoint(x, y, z) {
-  if (!isSameDirection(getRotation().forward, new Vector(0, 0, 1))) {
-    expandCyclePoint(x, y, z);
-    return;
-  }
   writeBlock(getFeed(cycle.feedrate));
 
   if (isProbeOperation(currentSection)) {
-    if (!isSameDirection(currentSection.workPlane.forward, new Vector(0, 0, 1))) {
-      if (!allowIndexingWCSProbing && currentSection.strategy == "probe") {
-        error(localize("Updating WCS / work offset using probing is only supported by the CNC in the WCS frame."));
-        return;
-      }
-    }
-
     forceXYZ();
   }
 
@@ -1440,14 +1347,14 @@ function onCyclePoint(x, y, z) {
 }
 
 function mcrBoreMilling(cycle) {
-  var numberOfSteps = (cycle.numberOfSteps != undefined) ? cycle.numberOfSteps : 0;
-  if (numberOfSteps > 2) {
+
+  if (cycle.numberOfSteps > 2) {
     error(localize("Only 2 steps are allowed for bore-milling"));
     return;
   }
 
-  var helixCycles = Math.floor(cycle.depth / cycle.pitch); // needs to be tested
-  var XYCleaning = (numberOfSteps == 2) ? cycle.stepover : 0;
+  var helixCycles = Math.floor(cycle.depth/cycle.pitch); // needs to be tested
+  var XYCleaning = (cycle.numberOfSteps == 2) ? cycle.stepover : 0;
   var bottomCleaning = 0;
   var fastZPlunge = cycle.clearance - cycle.retract;
   var slowZPlunge = cycle.retract - cycle.stock;
@@ -1516,7 +1423,6 @@ function onCycleEnd() {
 
   var probeWorkOffsetCode;
   if (isProbeOperation(currentSection)) {
-    var probeOutputWorkOffset = currentSection.probeWorkOffset;
     var workOffset = probeOutputWorkOffset ? probeOutputWorkOffset : currentWorkOffset;
     if (workOffset != 0) {
       if (workOffset >= 19) {
@@ -1527,6 +1433,14 @@ function onCycleEnd() {
       writeBlock("Position " + probeWorkOffsetCode + ", 3;");
     }
     forceXYZ();
+  }
+}
+
+var probeOutputWorkOffset = 1;
+
+function onParameter(name, value) {
+  if (name == "probe-output-work-offset") {
+    probeOutputWorkOffset = (value > 0) ? value : 1;
   }
 }
 
@@ -1614,7 +1528,7 @@ function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
   var a = (machineConfiguration.isMachineCoordinate(0) ? aOutput.format(_a) : "a6p");
   var b = (machineConfiguration.isMachineCoordinate(1) ? aOutput.format(_b) : "b6p");
   var c = (machineConfiguration.isMachineCoordinate(2) ? aOutput.format(_c) : "c6p");
-
+  
   if (x || y || z || a || b || c) {
     writeBlock(getFeed(feed));
     writeBlock("Axyzabc 0, " + x + ", " + y + ", " + z + ", " + a + ", " + b + ", " + c + ";");
@@ -1747,83 +1661,38 @@ function translate(text) {
 }
 
 var currentCoolantMode = COOLANT_OFF;
-var coolantOff = undefined;
 
 function setCoolant(coolant) {
-  var coolantCodes = getCoolantCodes(coolant);
-  if (Array.isArray(coolantCodes)) {
-    for (var c in coolantCodes) {
-      writeBlock(translate("Coolant") + " 4, 0" + ", " + coolantCodes[c] + ", 0;");
-    }
-    return undefined;
-  }
-  return coolantCodes;
-}
-
-function getCoolantCodes(coolant) {
-  var multipleCoolantBlocks = new Array(); // create a formatted array to be passed into the outputted line
-  if ((getProperty("useCoolant") != undefined) && !getProperty("useCoolant")) {
-    return undefined;
-  }
-  if (!coolants) {
-    error(localize("Coolants have not been defined."));
-  }
-  if (tool.type == TOOL_PROBE) { // avoid coolant output for probing
-    coolant = COOLANT_OFF;
+  if (!properties.writeCoolantCommands) {
+    return; // do not output coolants
   }
   if (coolant == currentCoolantMode) {
-    return undefined; // coolant is already active
+    return; // coolant is already active
   }
-  if ((coolant != COOLANT_OFF) && (currentCoolantMode != COOLANT_OFF) && (coolantOff != undefined)) {
-    if (Array.isArray(coolantOff)) {
-      for (var i in coolantOff) {
-        multipleCoolantBlocks.push(coolantOff[i]);
-      }
-    } else {
-      multipleCoolantBlocks.push(coolantOff);
-    }
+
+  if (coolant == COOLANT_OFF) {
+    writeBlock(translate("Coolant") + " 4, 0" + ", 2" + ", 0;"); // coolant off
+    currentCoolantMode = COOLANT_OFF;
+    return;
   }
 
   var m;
-  var coolantCodes = {};
-  for (var c in coolants) { // find required coolant codes into the coolants array
-    if (coolants[c].id == coolant) {
-      coolantCodes.on = coolants[c].on;
-      if (coolants[c].off != undefined) {
-        coolantCodes.off = coolants[c].off;
-        break;
-      } else {
-        for (var i in coolants) {
-          if (coolants[i].id == COOLANT_OFF) {
-            coolantCodes.off = coolants[i].off;
-            break;
-          }
-        }
-      }
-    }
-  }
-  if (coolant == COOLANT_OFF) {
-    m = !coolantOff ? coolantCodes.off : coolantOff; // use the default coolant off command when an 'off' value is not specified
-  } else {
-    coolantOff = coolantCodes.off;
-    m = coolantCodes.on;
-  }
-
-  if (!m) {
+  switch (coolant) {
+  case COOLANT_FLOOD:
+  case COOLANT_MIST:
+    m = 1;
+    break;
+  case COOLANT_AIR:
+    m = 3;
+    break;
+  default:
     onUnsupportedCoolant(coolant);
-    m = 9;
-  } else {
-    if (Array.isArray(m)) {
-      for (var i in m) {
-        multipleCoolantBlocks.push(m[i]);
-      }
-    } else {
-      multipleCoolantBlocks.push(m);
-    }
-    currentCoolantMode = coolant;
-    return multipleCoolantBlocks; // return the single formatted coolant value
+    m = 2;
   }
-  return undefined;
+  if (m) {
+    writeBlock(translate("Coolant") + " 4, 0" + ", " + m + ", 0;"); // coolant off
+    currentCoolantMode = coolant;
+  }
 }
 
 var mapCommand = {
@@ -1868,11 +1737,6 @@ function onSectionEnd() {
     writeBlock("Rtcp 0;");
   }
 
-  // the code below gets the machine angles from previous operation.  closestABC must also be set to true
-  if (currentSection.isMultiAxis() && currentSection.isOptimizedForMachine()) {
-    currentMachineABC = currentSection.getFinalToolAxisABC();
-  }
-
   if (((getCurrentSectionId() + 1) >= getNumberOfSections()) ||
       (tool.number != getNextSection().getTool().number)) {
     onCommand(COMMAND_BREAK_CONTROL);
@@ -1885,7 +1749,7 @@ function onSectionEnd() {
   setWorkPlane(new Vector(0, 0, 0), false); // optional
   forceWorkPlane(); // optional
 
-  if (!isLastSection() && getProperty("showOperationDialog")) {
+  if (!isLastSection() && properties.showOperationDialog) {
     writeBlock("$Message = \"Start next Operation\";");
     writeBlock(translate("Condition") + " optional_stop, 0, 1, 0, 9999;");
     writeBlock(translate("Message") + " $Message, 0, 0, 0;");
@@ -1895,50 +1759,10 @@ function onSectionEnd() {
   forceAny();
 }
 
-/** Output block to do safe retract and/or move to home position. */
-function writeRetract() {
-  if (arguments.length == 0) {
-    error(localize("No axis specified for writeRetract()."));
-    return;
-  }
-  var words = []; // store all retracted axes in an array
-  for (var i = 0; i < arguments.length; ++i) {
-    let instances = 0; // checks for duplicate retract calls
-    for (var j = 0; j < arguments.length; ++j) {
-      if (arguments[i] == arguments[j]) {
-        ++instances;
-      }
-    }
-    if (instances > 1) { // error if there are multiple retract calls for the same axis
-      error(localize("Cannot retract the same axis twice in one line"));
-      return;
-    }
-    switch (arguments[i]) {
-    case X:
-      words.push("X" + xyzFormat.format(machineConfiguration.hasHomePositionX() ? machineConfiguration.getHomePositionX() : 0));
-      break;
-    case Y:
-      words.push("Y" + xyzFormat.format(machineConfiguration.hasHomePositionY() ? machineConfiguration.getHomePositionY() : 0));
-      break;
-    case Z:
-      writeBlock(translate("ToolRetraction") + ";");
-      retracted = true; // specifies that the tool has been retracted to the safe plane
-      zOutput.reset();
-      break;
-    default:
-      error(localize("Bad axis specified for writeRetract()."));
-      return;
-    }
-  }
-  if (words.length > 0) {
-    writeBlock("Clamping_position");
-  }
-}
-
 function onClose() {
   writeln("");
 
-  if (getProperty("writeVersion")) {
+  if (properties.writeVersion) {
     if ((typeof getHeaderVersion == "function") && getHeaderVersion()) {
       writeComment(localize("post version") + ": " + getHeaderVersion());
     }
@@ -1953,7 +1777,7 @@ function onClose() {
   var description = machineConfiguration.getDescription();
 
   writeComment("Please make sure that the language on your control is set to " + "\"" + language + "\"");
-  if (getProperty("writeMachine") && (vendor || model || description)) {
+  if (properties.writeMachine && (vendor || model || description)) {
     writeComment(localize("Machine"));
     if (vendor) {
       writeComment("  " + localize("vendor") + ": " + vendor);
@@ -1968,20 +1792,16 @@ function onClose() {
   writeToolTable();
 
   // write jump to start operation
-  if (getProperty("showOperationDialog")) {
+  if (properties.showOperationDialog) {
     writeBlock(translate("Condition") + " 0, 0, 0 , startOperation, startOperation;");
   }
-
+  
   writeMainProgram();
   writeComment("###############################################");
 
-  writeRetract(Z);
+  writeBlock(translate("ToolRetraction") + ";");
 
   // setWorkPlane(new Vector(0, 0, 0), false); // reset working plane
-  writeRetract(X, Y);
+  writeBlock("Clamping_position");
   zOutput.reset();
-}
-
-function setProperty(property, value) {
-  properties[property].current = value;
 }

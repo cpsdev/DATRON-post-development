@@ -1,5 +1,5 @@
 /**
-  Copyright (C) 2012-2022 by Autodesk, Inc.
+  Copyright (C) 2012-2020 by Autodesk, Inc.
   All rights reserved.
 
   DATRON post processor configuration.
@@ -10,6 +10,7 @@
   FORKID {21ADEFBF-939E-4D3F-A935-4E61F5958698}
 */
 
+// >>>>> INCLUDED FROM generic_posts/datron next.cps
 description = "DATRON next";
 vendor = "DATRON";
 vendorUrl = "http://www.datron.com";
@@ -3087,4 +3088,286 @@ function onClose() {
 
 function setProperty(property, value) {
   properties[property].current = value;
+}
+// <<<<< INCLUDED FROM generic_posts/datron next.cps
+
+capabilities |= CAPABILITY_INSPECTION;
+description = "DATRON next Inspect Surface";
+minimumRevision = minimumRevision < 45793 ? 45793 : minimumRevision;
+longDescription = "Generic post for Datron next with Inspect Surface capabilities.";
+
+// code for inspection support
+properties.singleResultsFile = {
+  title      : "Create Single Results File",
+  description: "Set to false if you want to store the measurement results for each inspection toolpath in a seperate file",
+  group      : "probing",
+  type       : "boolean",
+  value      : true,
+  scope      : "post"
+};
+properties.toolOffsetType = {
+  title      : "Tool offset type",
+  description: "Select the which offsets are available on the tool offset page",
+  group      : "probing",
+  type       : "enum",
+  values     : [
+    {id:"geomWear", title:"Geometry & Wear"},
+    {id:"geomOnly", title:"Geometry only"}
+  ],
+  value: "geomOnly",
+  scope: "post"
+};
+properties.stopOnInspectionEnd = {
+  title      : "Stop on Inspection End",
+  description: "Set to ON to output M0 at the end of each inspection toolpath",
+  group      : "probing",
+  type       : "boolean",
+  value      : true,
+  scope      : "post"
+};
+
+var ijkInspectionFormat = createFormat({decimals:5, forceDecimal:true});
+// inspection variables
+var inspectionVariables = {
+  localVariablePrefix   : "#",
+  probeRadius           : 0,
+  pointNumber           : 1,
+  inspectionSections    : 0,
+  inspectionSectionCount: 0,
+  workpieceOffset       : "",
+};
+
+var macroFormat = createFormat({prefix:inspectionVariables.localVariablePrefix, decimals:0});
+function inspectionProcessSectionStart() {
+  // only write header once if user selects a single results file
+  if (inspectionVariables.inspectionSectionCount == 0 || !getProperty("singleResultsFile") || (currentSection.workOffset != inspectionVariables.workpieceOffset)) {
+    inspectionCreateResultsFileHeader();
+  }
+  inspectionVariables.inspectionSectionCount += 1;
+  // write the toolpath name as a comment
+  writeBlock("FileWriteLine filename=InspectionFilename value=\";TOOLPATH " + getParameter("operation-comment") + "\"");
+  inspectionWriteWorkplaneTransform();
+  if (getProperty("toolOffsetType") == "geomOnly") {
+    writeComment("Geometry Only");
+    // TAG fill
+  } else {
+    writeComment("Geometry and Wear");
+    // TAG fill
+  }
+}
+
+function inspectionCreateResultsFileHeader() {
+  // add the filename to the global variables declarations
+  addVariable("InspectionFilename:string");
+
+  writeBlock("InspectionFilename = \"" + getInspectionFilename() + "\"");
+  writeComment("delete existing old file");
+  writeBlock("if FileExists filename=InspectionFilename");
+  writeBlock("  FileDelete filename=InspectionFilename");
+  writeBlock("endif");
+
+  writeBlock("");
+  if (inspectionVariables.inspectionSectionCount == 0 || !getProperty("singleResultsFile")) {
+    writeBlock("FileWriteLine filename=InspectionFilename value=\"START\"");
+    if (hasGlobalParameter("document-id")) {
+      writeBlock("FileWriteLine filename=InspectionFilename value=\"DOCUMENTID " + getGlobalParameter("document-id") + "\"");
+    }
+    if (hasGlobalParameter("model-version")) {
+      writeBlock("FileWriteLine filename=InspectionFilename value=\"MODELVERSION " + getGlobalParameter("model-version") + "\"");
+    }
+  }
+  // write the toolpath id in the results file
+  writeBlock("FileWriteLine filename=InspectionFilename value=\"TOOLPATHID " + getParameter("autodeskcam:operation-id") + "\"");
+  inspectionWriteCADTransform();
+  inspectionVariables.workpieceOffset = currentSection.workOffset;
+}
+
+function inspectionWriteCADTransform() {
+  var cadOrigin = currentSection.getModelOrigin();
+  var cadWorkPlane = currentSection.getModelPlane().getTransposed();
+  var cadEuler = cadWorkPlane.getEuler2(EULER_XYZ_S);
+  writeBlock(
+    "FileWriteLine filename=InspectionFilename value=\"G331" +
+    " N" + inspectionVariables.pointNumber +
+    " A" + abcFormat.format(cadEuler.x) +
+    " B" + abcFormat.format(cadEuler.y) +
+    " C" + abcFormat.format(cadEuler.z) +
+    " X" + xyzFormat.format(-cadOrigin.x) +
+    " Y" + xyzFormat.format(-cadOrigin.y) +
+    " Z" + xyzFormat.format(-cadOrigin.z) +
+    "\""
+  );
+}
+
+function inspectionWriteWorkplaneTransform() {
+  var euler = currentSection.workPlane.getEuler2(EULER_XYZ_S);
+  var abc = new Vector(euler.x, euler.y, euler.z);
+  writeBlock("FileWriteLine filename=InspectionFilename value=\"G330" +
+    " N" + inspectionVariables.pointNumber +
+    " A" + abcFormat.format(abc.x) +
+    " B" + abcFormat.format(abc.y) +
+    " C" + abcFormat.format(abc.z) +
+    " X0 Y0 Z0 I0 R0\""
+  );
+}
+
+function inspectionProcessSectionEnd() {
+  if (isInspectionOperation(currentSection)) {
+    // close inspection results file if the NC has inspection toolpaths
+    if ((!getProperty("singleResultsFile")) || (inspectionVariables.inspectionSectionCount == inspectionVariables.inspectionSections)) {
+      // TAG add commisioning mode
+    }
+    writeBlock("FileWriteLine filename=InspectionFilename value=\"END\"");
+    writeBlock(getProperty("stopOnInspectionEnd") == true ? "Dialog message=\"Finish Inspection\" Yes No caption=\"Inspection\" Info" : "");
+  }
+}
+
+function onProbe(status) {
+  if (status) {// probe ON
+    writeBlock("PrepareXyzSensor"); // command for switching the probe on
+  } else { // probe OFF
+    writeBlock("UnprepareXyzSensor"); // command for switching the probe off
+  }
+}
+
+function inspectionCycleInspect(cycle, epx, epy, epz) {
+  if (getNumberOfCyclePoints() != 3) {
+    error(localize("Missing Endpoint in Inspection Cycle, check Approach and Retract heights"));
+  }
+
+  if (!isLastCyclePoint()) {
+    return;
+  }
+
+  forceFeed(); // ensure feed is always output - just in case.
+  if (currentSection.isMultiAxis()) {
+    error(localize("Multi axis inspect surface is not supported."));
+    return;
+  }
+
+  var m = getRotation();
+  var v = new Vector(cycle.nominalX, cycle.nominalY, cycle.nominalZ);
+  var targetPoint = m.multiply(v);
+  var pathVector = new Vector(cycle.nominalI, cycle.nominalJ, cycle.nominalK);
+  var measureDirection = m.multiply(pathVector).normalized.getNegated();
+  var searchDistance = cycle.probeClearance;
+
+  // call inspection subprogram
+  writeBlock("MeasurePoint(");
+  spacingDepth += 1;
+  writeBlock("pointID=" + cycle.pointID);
+  writeBlock("surfacePos=" + vectorToDatronPosString(targetPoint));
+  writeBlock("measureDirection=" + vectorToDatronPosString(measureDirection));
+  writeBlock("searchDistance=" + xyzFormat.format(searchDistance));
+  writeBlock("surfaceOffset=" + xyzFormat.format(getParameter("operation:inspectSurfaceOffset")));
+  writeBlock("upper=" + xyzFormat.format(getParameter("operation:inspectUpperTolerance")));
+  writeBlock("lower=" + xyzFormat.format(getParameter("operation:inspectLowerTolerance")) + ")");
+  spacingDepth -= 1;
+  writeBlock("");
+  zOutput.reset();
+}
+
+// convert the hsm vector to the datron simpl position initilizer.
+function vectorToDatronPosString(vec) {
+  return "NewPos(" + xyzFormat.format(vec.x) + ", " + xyzFormat.format(vec.y) + ", " + xyzFormat.format(vec.z) + ")";
+}
+
+// adds the necessary references for inspection to the program header
+function addInspectionReferences() {
+  if (hasProgramInspectionOperations()) {
+    SimPLProgram.usingList.push("using File, LinearAlgebra, LinearAlgebraHelper, MeasuringCyclesExecutor, XyzSensor, String");
+    SimPLProgram.usingList.push("import AxisSystem");
+  }
+}
+
+function hasProgramInspectionOperations() {
+  var numberOfSections = getNumberOfSections();
+  for (var i = 0; i < numberOfSections; ++i) {
+    var section = getSection(i);
+    if (isInspectionOperation(section)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// create the subprogram that makes the inspection probing and the output to the result file.
+function writeInspectionProgram() {
+  // not triggered is captured by the NEXT Control
+  var inspectProgram = [
+    "program MeasurePoint pointID:number surfacePos:Position measureDirection:Position searchDistance:number surfaceOffset:number upper:number lower:number",
+    "",
+    "  # measure",
+    "  measureResult = GetMeasuringResultCompensation(",
+    "    ArrangeMeasuring(",
+    "    targetPosition=surfacePos",
+    "    direction=measureDirection",
+    "    distance=searchDistance),",
+    "  AxisSystem::GetRcsMatrix)",
+    "",
+    "  # Trigger not found",
+    "  if measureResult.active == false",
+    "    Dialog message=\"Target Point not found\" caption=\"Inspection error\" Error",
+    "  endif",
+    "",
+
+    " # write nominal values",
+    "  measureNominalString = \"G800 N\" + ValueToString(pointID) + \" X\" + ValueToString(surfacePos.X)  + \" Y\" + ValueToString(surfacePos.Y) + \" Z\" + ValueToString(surfacePos.Z) + \" I\" + ValueToString(measureDirection.X * -1) + \" J\"+ ValueToString(measureDirection.Y * -1) + \" K\" + ValueToString(measureDirection.Z * -1) + \" O\" + ValueToString(surfaceOffset) + \" U\" + ValueToString(upper) + \" L\" + ValueToString(lower)",
+    "  measureNominalString = StringReplace(measureNominalString, \",\", \".\")",
+    "  FileWriteLine filename=InspectionFilename value=measureNominalString",
+    "",
+
+    "  # write result values",
+    "   measureResultString = StringFormat(",
+    "   baseString=\"G801 N{0} X{1:f3} Y{2:f3} Z{3:f3} R{4:f3}\"",
+    "   p0=pointID",
+    "   p1=(measureResult.measuredPoint.X + ((measureDirection.X*(-1))*GetProbeTipRadius))",
+    "   p2=(measureResult.measuredPoint.Y + ((measureDirection.Y*(-1))*GetProbeTipRadius))",
+    "   p3=(measureResult.measuredPoint.Z + ((measureDirection.Z*(-1))*GetProbeTipRadius))",
+    "   p4=GetProbeTipRadius)",
+    "  measureResultString = StringReplace(measureResultString, \",\", \".\")",
+    "",
+
+    "FileWriteLine filename=InspectionFilename value=measureResultString",
+    "",
+    "  # check result",
+    "  measuredPosition = NewPos(",
+    "    measureResult.measuredPoint.X,",
+    "    measureResult.measuredPoint.Y,",
+    "    measureResult.measuredPoint.Z)",
+    "",
+    "  measuredDifferenceVector = SubPosition(surfacePos, measuredPosition)",
+    "  deltaDirection = Normalize(measuredDifferenceVector)",
+    "  distance = GetPositionDistance(measuredDifferenceVector)",
+    "",
+    "  # check deviation direction",
+    "  if(GetPositionDistance(SubPosition(Normalize(measuredDifferenceVector),measureDirection))>1)",
+    "    distance = distance * -1",
+    "  endif",
+    "",
+    "  if(distance > lower and distance < upper)",
+    "    return",
+    "  endif",
+    "",
+    "  # Position out of tolerance",
+    "  Dialog message=\"Position out of tolerance\" caption=\"Position out of tolerance\" Error",
+    "",
+    "endprogram"
+  ];
+
+  inspectProgramOperation = {operationProgram:inspectProgram.join(EOL)};
+  SimPLProgram.operationList.push(inspectProgramOperation);
+}
+
+function getInspectionFilename() {
+  var resFile;
+  if (getProperty("singleResultsFile")) {
+    resFile = getParameter("job-description") + " RESULTS";
+  } else {
+    resFile = getParameter("operation-comment") + " RESULTS";
+  }
+
+  resFile = resFile.replace(/[^a-zA-Z0-9_ ]/g, "");
+  resFile += ".txt";
+  return resFile;
 }
